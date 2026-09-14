@@ -25,8 +25,10 @@ The end-to-end and independent-data gates below apply before a scientific/valida
    Log unsuccessful runs and manual correction burden, not only successful cases.
 9. Quantify mask agreement/coverage, registration error, exclusion fraction, matrix differences,
    gradient subspace stability and longitudinal metric agreement. A unit-test pass is not MRI validation.
-10. Test clean installations on macOS arm64 and supported Linux; pin dependencies and test containers.
-    FreeSurfer and atlas licenses/weights are not bundled without permission.
+10. Test the application on macOS arm64 and supported Linux against explicitly documented,
+    separately installed tool versions. Implement non-mutating, stage-specific path/version/resource
+    checks. Do not require an all-in-one container or bundle external binaries, interpreters, licenses,
+    atlases or weights. See LOCAL_DEPENDENCIES.md.
 11. Verify reproducible synthetic demo and CI. Resolve resource controls and GUI requirements.
 12. Tag a release, archive it to obtain a real persistent identifier, then add the ACTUAL URL/version
     and verified validation results to the paper. Do not create a placeholder DOI or claim availability early.

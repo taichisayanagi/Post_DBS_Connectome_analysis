@@ -12,7 +12,8 @@ This is not an end-to-end validated DICOM pipeline or a clinical tool.
 | Electrode mask | Candidate from reviewed registered centerlines; reviewed mask union | Reproduce and generalize the study's void-follow algorithm |
 | Prepared-input connectome | Plans/executes exclusion → SIFT2 refit → matrix; explicit CPU choice | Complete fixture run, independent exclusion/weight audit |
 | Gradient G1–G4 | Reference-bound embedding and longitudinal change implemented | Automatic training-only/LOSO reference construction and study-level equivalence |
-| Distribution | MIT source; macOS/Linux Python install and synthetic-test CI passed | External-tool installations, containers, then validated release |
+| Distribution | MIT GUI/workflow package; calls user-installed software; no all-in-one bundle | Stage-specific environment checks and tested local dependency combinations |
+| Environment setup | Python dependencies declared; basic external-command checks only | GUI path/version/resource settings and bounded smoke tests |
 
 ## Evidence obtained so far
 
@@ -44,6 +45,7 @@ The interface reports elapsed time, current external tool and local log excerpts
 invent percentages or estimated completion times for tools that do not expose them.
 
 See [interface design](GUI_DESIGN.md) for the Lead-DBS-inspired control-panel organization.
+See [local dependency policy](LOCAL_DEPENDENCIES.md) for user-managed tool installations.
 The next major milestone is an audited reconstruction path from DICOM to reviewed prepared inputs.
 After that: end-to-end independent-data validation and reproducibility of the manuscript outputs.
 

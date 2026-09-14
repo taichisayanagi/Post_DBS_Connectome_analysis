@@ -12,6 +12,15 @@ No patient data, brain images, private study matrices or third-party atlases are
 
 **[Current development progress and remaining milestones](docs/STATUS.md)**
 
+## Installation model
+
+This is a lightweight GUI/workflow package that calls **software already installed on the user's
+computer**. FSL, MRtrix3, FreeSurfer, NextBrain resources, MATLAB, SPM12, the Python interpreter,
+atlases and model weights are not bundled. No all-in-one container is required.
+Only the dependencies for the selected, implemented operation are required.
+See [local dependencies and the planned environment checker](docs/LOCAL_DEPENDENCIES.md).
+Installing these tools does not implement the reconstruction stages that are still missing below.
+
 ## Current functionality
 
 - Explicit local DICOM conversion using dcm2niix (dry-run unless `--execute`).
@@ -33,7 +42,7 @@ No patient data, brain images, private study matrices or third-party atlases are
 CT→T1/T2→b0 registration; the paper's b0 void-following algorithm and reviewed island repair;
 DWI preprocessing and acquisition-dependent FOD estimation; FreeSurfer/NextBrain atlas construction;
 ACT tractogram generation; longitudinal transform orchestration; cohort LOSO orchestration;
-CT/atlas/multi-session browser overlays; container and external end-to-end validation.
+CT/atlas/multi-session browser overlays; comprehensive environment checks and external end-to-end validation.
 
 The centerline tube is a candidate-mask utility, **not** a reproduction of the study's final void-follow
 mask. Its radius is not a universal artifact boundary. CT metal geometry and diffusion signal loss
