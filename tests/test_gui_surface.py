@@ -42,6 +42,11 @@ class GuiSurfaceTests(unittest.TestCase):
         self.assertIn("approve_compute:", self.html)
         self.assertIn("threads:Number(", self.html)
 
+    def test_long_resource_paths_do_not_force_grid_width(self):
+        self.assertIn("grid-template-columns:repeat(2,minmax(0,1fr))", self.html)
+        self.assertIn(".workflow-grid>div{min-width:0}", self.html)
+        self.assertIn(".workflow-status{overflow-wrap:anywhere}", self.html)
+
     def test_private_qc_and_development_limits_remain_visible(self):
         self.assertIn("Research use only", self.html)
         self.assertIn("not independently validated end to end", self.html)
