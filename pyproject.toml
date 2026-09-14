@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "dbs-native-connectome"
+version = "0.1.0.dev0"
+description = "Research prototype for audited electrode-aware structural connectomics"
+requires-python = ">=3.11"
+license = {file = "LICENSE"}
+dependencies = ["numpy>=2,<3", "scipy>=1.16,<2", "nibabel>=5.3,<6", "brainspace==0.1.22"]
+
+[project.scripts]
+dbs-connectome = "dbs_connectome.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+dbs_connectome = ["static/*.html"]

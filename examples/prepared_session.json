@@ -1,0 +1,10 @@
+{
+  "tractogram": "/private/study/sub-example/tracts.tck",
+  "fod": "/private/study/sub-example/fod_wm_norm.mif",
+  "five_tissue": "/private/study/sub-example/5tt.mif",
+  "mask": "/private/study/sub-example/reviewed_union_mask.nii.gz",
+  "reference": "/private/study/sub-example/b0.nii.gz",
+  "atlas": "/private/study/sub-example/parcellation.nii.gz",
+  "nodes": "/private/study/nodes.tsv",
+  "approval": "/private/study/review/approval.json"
+}
