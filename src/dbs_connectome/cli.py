@@ -6,10 +6,10 @@ import sys
 
 import numpy as np
 
-from .external import connectome_plan, conversion_plan, execute, validate_mif_grid, validate_tractogram_sampling
+from .external import audit_mask_exclusion, connectome_plan, conversion_plan, execute, validate_mif_grid, validate_tractogram_sampling
 from .gradients import compact_raw, displacement, geometry, hemisphere_embeddings, load_nodes, settings_dict
 from .masks import REVIEW_ITEMS, approval_record, create_candidate, union_registered
-from .provenance import digest, new_run, read_json, record, require_separate_output, voxel_fingerprint, write_json
+from .provenance import assert_inputs_unchanged, digest, freeze_inputs, new_run, read_json, record, require_separate_output, voxel_fingerprint, write_json
 from .qc import browser_report
 
 
@@ -21,7 +21,7 @@ def parser():
     gui.add_argument("--data-root", required=True)
     gui.add_argument("--output-root", required=True)
     gui.add_argument("--port", type=int, default=8765)
-    for name in ("environment", "inventory", "import-session", "reconstruct", "convert", "mask", "union", "approve", "connectome", "reference", "embed", "change", "fingerprint", "qc"):
+    for name in ("environment", "inventory", "import-session", "import-nifti", "reconstruct", "prepare-session", "finish-session", "convert", "mask", "union", "approve", "connectome", "reference", "embed", "change", "fingerprint", "qc"):
         s = sub.add_parser(name)
         s.add_argument("--output-root", required=True, help="Private result root outside source checkout")
         if name == "environment":
@@ -31,6 +31,20 @@ def parser():
         elif name == "import-session":
             s.add_argument("--inventory-run", required=True)
             s.add_argument("--selection", required=True)
+            s.add_argument("--execute", action="store_true")
+        elif name == "import-nifti":
+            s.add_argument("--selection", required=True)
+        elif name == "prepare-session":
+            s.add_argument("--reconstruction-run", required=True)
+            s.add_argument("--settings", required=True)
+            s.add_argument("--threads", type=int, required=True)
+            s.add_argument("--execute", action="store_true")
+        elif name == "finish-session":
+            s.add_argument("--prepared-run", required=True)
+            s.add_argument("--approval", required=True)
+            s.add_argument("--threads", type=int, required=True)
+            s.add_argument("--streamlines", type=int, default=1000000)
+            s.add_argument("--reference-run")
             s.add_argument("--execute", action="store_true")
         elif name == "reconstruct":
             s.add_argument("--import-run", required=True)
@@ -97,6 +111,18 @@ def run(args, out):
         from .intake import convert_selection
         convert_selection(args.inventory_run, read_json(args.selection), out, args.execute)
         return
+    elif command == "import-nifti":
+        from .nifti import import_nifti
+        import_nifti(read_json(args.selection), out)
+        return
+    elif command == "prepare-session":
+        from .workflow import prepare_session
+        prepare_session(args.reconstruction_run, read_json(args.settings), out, args.threads, args.execute)
+        return
+    elif command == "finish-session":
+        from .workflow import finish_session
+        finish_session(args.prepared_run, args.approval, out, args.threads, args.streamlines, args.reference_run, args.execute)
+        return
     elif command == "reconstruct":
         from .reconstruction import reconstruct
         reconstruct(args.import_run, read_json(args.choices), out, args.threads, args.execute)
@@ -148,15 +174,24 @@ def run(args, out):
                       "nodes_sha256": digest(paths["nodes"])}
         inputs = [args.config, *paths.values()]
         if args.execute:
+            before = freeze_inputs(inputs)
+            write_json(out / "input_hashes_before.json", before)
             validate_mif_grid(paths["fod"], paths["reference"], out)
             validate_mif_grid(paths["five_tissue"], paths["reference"], out)
             sampling = validate_tractogram_sampling(paths["tractogram"], paths["reference"])
             write_json(out / "tractogram_sampling.json", sampling)
-            execute(commands, out, args.threads)
+            for directory in ("exclusion_commands", "connectome_commands"):
+                (out / directory).mkdir()
+            execute(commands[:1], out / "exclusion_commands", args.threads)
+            audit = audit_mask_exclusion(out / "tracks_excluded.tck", paths["mask"])
+            write_json(out / "exclusion_audit.json", audit)
+            execute(commands[1:], out / "connectome_commands", args.threads)
             nodes = load_nodes(paths["nodes"])
             raw = np.loadtxt(out / "connectome_raw.csv", delimiter=",")
             compact = compact_raw(raw, [int(n["label"]) for n in nodes])
             np.save(out / "connectome.npy", compact)
+            assert_inputs_unchanged(before)
+            write_json(out / "source_integrity.json", {"source_bytes_unchanged": True})
         else:
             status = "planned_not_executed"
         outputs = [p for p in out.iterdir() if p.is_file()]
@@ -226,12 +261,23 @@ def main(argv=None):
             from .gui import serve
             serve(args.data_root, args.output_root, args.port)
             return 0
-        for name in ("dicom_dir", "inventory_run", "import_run", "reference_run", "connectome_run", "first_run", "second_run"):
+        for name in ("dicom_dir", "inventory_run", "import_run", "reference_run", "connectome_run", "first_run", "second_run", "reconstruction_run", "prepared_run"):
             source = getattr(args, name, None)
             if source:
                 require_separate_output(args.output_root, source)
         if args.command == "import-session":
             require_separate_output(args.output_root, read_json(Path(args.inventory_run) / "inventory.json")["source_root"])
+        if args.command == "import-nifti":
+            from .nifti import validate_selection
+            validate_selection(read_json(args.selection), args.output_root)
+        lineage_files = {"reconstruct": ("import_run", "converted.json"),
+                         "prepare-session": ("reconstruction_run", "reconstruction.json"),
+                         "finish-session": ("prepared_run", "prepared.json")}
+        if args.command in lineage_files:
+            field, filename = lineage_files[args.command]
+            original = read_json(Path(getattr(args, field)) / filename).get("source_root")
+            if original:
+                require_separate_output(args.output_root, original)
         out = new_run(args.output_root, args.command)
         run(args, out)
     except Exception as error:

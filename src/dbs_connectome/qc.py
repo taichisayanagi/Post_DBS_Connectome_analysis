@@ -12,7 +12,7 @@ from .masks import mask_qc, validate_binary
 from .provenance import digest, image3d, same_grid
 
 
-def browser_report(reference, mask, output, synthetic=False):
+def browser_report(reference, mask, output, synthetic=False, atlas=None, backgrounds=None, five_tissue=None):
     ref, mi = image3d(reference), image3d(mask)
     same_grid(ref, mi)
     validate_binary(mi)
@@ -38,6 +38,36 @@ def browser_report(reference, mask, output, synthetic=False):
         "reference_sha256": digest(reference), "mask_sha256": digest(mask),
         "intensity_window": [float(low), float(high)], "qc": mask_qc(masked > 0, r.affine),
     }
+    payload["backgrounds"] = {"b0": payload["image"]}
+    payload["auxiliary_hashes"] = {}
+    for name, path in (backgrounds or {}).items():
+        auxiliary = image3d(path)
+        same_grid(ref, auxiliary)
+        values = nib.as_closest_canonical(auxiliary).get_fdata()
+        lo, hi = np.percentile(values[np.isfinite(values)], [1, 99.5])
+        scaled = np.clip((values-lo) / max(hi-lo, 1e-6) * 255, 0, 255).astype(np.uint8)
+        payload["backgrounds"][name] = base64.b64encode(scaled.tobytes(order="F")).decode()
+        payload["auxiliary_hashes"][name] = digest(path)
+    if atlas:
+        ai = image3d(atlas)
+        same_grid(ref, ai)
+        labels = np.asarray(nib.as_closest_canonical(ai).dataobj)
+        boundary = np.zeros(labels.shape, bool)
+        for axis in range(3):
+            boundary |= (labels != np.roll(labels, 1, axis)) & (labels > 0)
+        payload["atlas_boundary"] = base64.b64encode(boundary.astype(np.uint8).tobytes(order="F")).decode()
+        payload["auxiliary_hashes"]["atlas"] = digest(atlas)
+    if five_tissue:
+        fi = nib.load(five_tissue)
+        if fi.shape != ref.shape + (5,) or not np.allclose(fi.affine, ref.affine, atol=1e-5):
+            raise ValueError("5TT QC grid mismatch")
+        values = nib.as_closest_canonical(fi).get_fdata()
+        if not np.isfinite(values).all():
+            raise ValueError("Nonfinite 5TT values")
+        for i, name in enumerate(("Cortical GM", "Subcortical GM", "White matter", "CSF", "Pathology")):
+            encoded = np.clip(values[..., i] * 255, 0, 255).astype(np.uint8)
+            payload["backgrounds"]["5TT " + name] = base64.b64encode(encoded.tobytes(order="F")).decode()
+        payload["auxiliary_hashes"]["five_tissue"] = digest(five_tissue)
     label = "SYNTHETIC DEMO — no patient data" if synthetic else "PRIVATE ANATOMICAL DATA — do not upload or share publicly"
     html = TEMPLATE.replace("__NOTICE__", escape(label)).replace("__DATA__", json.dumps(payload, allow_nan=False))
     with Path(output).open("x", encoding="utf-8") as stream:
@@ -65,6 +95,7 @@ input.slice{width:100%}.notes{margin-top:14px;display:grid;grid-template-columns
 <header><h1>Electrode-mask review</h1><span class="caption">b0 / exclusion mask · Display only</span></header>
 <div class="warning">__NOTICE__<br>No approval is recorded here. Matching image grids do not establish anatomical registration.</div>
 <div class="controls"><label><input id="showMask" type="checkbox" checked> Show mask</label>
+<label>Background <select id="background"></select></label><label><input id="showAtlas" type="checkbox"> Atlas boundaries</label>
 <label>Mask opacity <input id="alpha" type="range" min="0" max="100" value="55"></label>
 <label>Display window <input id="window" type="range" min="20" max="255" value="255"></label>
 <button id="center" type="button">Center on mask</button></div>
@@ -73,7 +104,7 @@ input.slice{width:100%}.notes{margin-top:14px;display:grid;grid-template-columns
 <li>CT–anatomical MRI–DWI registration and orientation</li><li>b0 void coverage at contacts and along the full shaft</li>
 <li>Spurious disconnected components and non-lead dark structures</li><li>Native parcellation alignment in a separate atlas overlay</li>
 <li>Registered union coverage at each longitudinal visit</li></ol>
-<p class="caption">This viewer shows one b0 and mask, not CT, atlas or multiple timepoints. It does not complete all five checks.
+<p class="caption">Available background images and atlas overlays are listed above. This viewer does not establish longitudinal registration or complete all five checks.
 Approval must be recorded separately through the processing interface or CLI after inspecting the necessary images.</p></section>
 <section><h2>Traceability</h2><div id="stats"></div><p class="caption">Mask SHA-256<br><code id="maskHash"></code></p>
 <p class="caption">Reference SHA-256<br><code id="refHash"></code></p><p class="caption">Images are reoriented to RAS+ for display only.
@@ -82,7 +113,8 @@ Left is screen-left in the axial/coronal-like views. No connection to external s
 </main><script>
 const d=__DATA__;
 const bytes=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
-const im=bytes(d.image),mask=bytes(d.mask),[nx,ny,nz]=d.shape;
+let im=bytes(d.image);const mask=bytes(d.mask),atlas=d.atlas_boundary?bytes(d.atlas_boundary):null,[nx,ny,nz]=d.shape;
+const bg=document.getElementById('background');for(const name of Object.keys(d.backgrounds)){const option=document.createElement('option');option.value=name;option.textContent=name;bg.append(option)}bg.onchange=()=>{im=bytes(d.backgrounds[bg.value]);draw()};document.getElementById('showAtlas').disabled=!atlas;
 const idx=(x,y,z)=>x+nx*(y+ny*z);
 const planes=[{name:'Sagittal-like',axis:0,w:ny,h:nz,labels:'P → A · I → S'},
 {name:'Coronal-like',axis:1,w:nx,h:nz,labels:'L → R · I → S'},
@@ -96,10 +128,10 @@ function draw(){const opacity=Number(document.getElementById('alpha').value)/100
 for(const p of ui){const s=Number(p.slider.value),ctx=p.canvas.getContext('2d'),pic=ctx.createImageData(p.w,p.h);p.output.textContent=`${s} / ${d.shape[p.axis]-1}`;
 for(let v=0;v<p.h;v++)for(let u=0;u<p.w;u++){let x,y,z;if(p.axis===0){x=s;y=u;z=p.h-1-v}else if(p.axis===1){x=u;y=s;z=p.h-1-v}else{x=u;y=p.h-1-v;z=s}
 const j=idx(x,y,z),k=4*(u+p.w*v),c=Math.min(255,im[j]*255/windowWidth),a=overlay&&mask[j]?opacity:0;
-pic.data[k]=c*(1-a)+255*a;pic.data[k+1]=c*(1-a)+30*a;pic.data[k+2]=c*(1-a)+50*a;pic.data[k+3]=255;}ctx.putImageData(pic,0,0);}}
+pic.data[k]=c*(1-a)+255*a;pic.data[k+1]=c*(1-a)+30*a;pic.data[k+2]=c*(1-a)+50*a;pic.data[k+3]=255;if(atlas&&atlas[j]&&document.getElementById('showAtlas').checked&&!a){pic.data[k]=30;pic.data[k+1]=210;pic.data[k+2]=240;}}ctx.putImageData(pic,0,0);}}
 function centerMask(){let x=0,y=0,z=0,n=0;for(let k=0;k<mask.length;k++)if(mask[k]){x+=k%nx;y+=Math.floor(k/nx)%ny;z+=Math.floor(k/(nx*ny));n++}
 if(n){const c=[x/n,y/n,z/n];let best=null,dist=Infinity;for(let k=0;k<mask.length;k++)if(mask[k]){const v=[k%nx,Math.floor(k/nx)%ny,Math.floor(k/(nx*ny))],r=v.reduce((s,a,i)=>s+(a-c[i])**2,0);if(r<dist){dist=r;best=v}}ui.forEach(p=>p.slider.value=best[p.axis]);}draw();}
-ui.forEach(p=>p.slider.addEventListener('input',draw));['showMask','alpha','window'].forEach(id=>document.getElementById(id).addEventListener('input',draw));
+ui.forEach(p=>p.slider.addEventListener('input',draw));['showMask','showAtlas','alpha','window'].forEach(id=>document.getElementById(id).addEventListener('input',draw));
 document.getElementById('center').addEventListener('click',centerMask);
 document.getElementById('stats').textContent=`${d.shape.join(' × ')} voxels · mask ${d.qc.voxels} voxels (${d.qc.volume_mm3.toFixed(1)} mm³) · ${d.qc.components_6_connected} connected component(s)`;
 document.getElementById('maskHash').textContent=d.mask_sha256;document.getElementById('refHash').textContent=d.reference_sha256;centerMask();

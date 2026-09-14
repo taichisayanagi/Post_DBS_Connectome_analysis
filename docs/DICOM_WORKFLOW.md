@@ -40,16 +40,15 @@ as temporary working files.
 
 ## Explicit current boundaries
 
-The route does not yet automatically reconstruct leads, reproduce the study's final void-follow
-mask/repair procedure, build the surface-Schaefer/NextBrain atlas and five-tissue image, generate
-the ACT tractogram, or orchestrate longitudinal registration and cohort reference construction.
-These are **implementation gaps**, not just absent validation. Existing advanced stages accept
-their externally prepared and reviewed products for mask approval, exclusion/SIFT2/connectome
-generation, reference-bound gradients and longitudinal change.
+The new [linked workflow](LINKED_WORKFLOW.md) adds NIfTI intake, FreeSurfer/NextBrain atlas and
+five-tissue construction, CT candidate masks and QC-gated ACT/SIFT2/connectome/G1–G4 handoff.
+The study's final void-follow/repair procedure, automatic longitudinal mask registration and
+cohort reference construction remain implementation gaps. Independent full-chain validation
+also remains outstanding. Prepared-input advanced operations are still available.
 
-Reconstruction never creates a mask approval file or a prepared-connectome config. Users must
+Reconstruction never creates a mask approval file. Users must
 not pass the **brain mask** as the **electrode exclusion mask**. The preview produced here is only
-a brain-mask view; CT/T1 overlay and artifact checks still require an external image viewer.
+a brain-mask view. The later preparation report adds CT/T1, atlas and 5TT overlays where supplied.
 
 ## Acquisition checks and unsupported inputs
 

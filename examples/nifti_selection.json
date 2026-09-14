@@ -1,0 +1,12 @@
+{
+  "source_root": "/private/input/patient",
+  "subject": "sub-001",
+  "visit": "post1",
+  "identity_reviewed": false,
+  "raw_dwi_reviewed": false,
+  "roles": {
+    "t1": {"image": "T1.nii.gz"},
+    "dwi": {"image": "dwi.nii.gz", "bval": "dwi.bval", "bvec": "dwi.bvec", "json": "dwi.json"},
+    "ct": {"image": "CT.nii.gz"}
+  }
+}

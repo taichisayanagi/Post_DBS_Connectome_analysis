@@ -204,7 +204,7 @@ def convert_selection(inventory_run, selection, out, execute_tools=False):
             artifacts.append(artifact)
         if not any(a["role"] == role for a in artifacts):
             raise ValueError("dcm2niix produced no NIfTI for " + role)
-    result = {"schema_version": 1, "subject": selection["subject"], "visit": selection["visit"],
+    result = {"schema_version": 1, "source_root": read_json(Path(inventory_run) / "inventory.json")["source_root"], "subject": selection["subject"], "visit": selection["visit"],
               "artifacts": artifacts, "status": "input_review_required",
               "notice": "Select the intended magnitude DWI and anatomical output; multi-echo/derived outputs are never chosen silently."}
     write_json(out / "converted.json", result)

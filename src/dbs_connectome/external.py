@@ -111,17 +111,68 @@ def validate_tractogram_sampling(path, reference):
     return {"count": count, "max_segment_mm": max_segment, "allowed_max_segment_mm": limit_mm}
 
 
-def execute(commands, out, threads=None):
+def audit_mask_exclusion(path, mask):
+    """Independent closed segment/voxel-box intersection, including between vertices.
+
+    A retained crossing fails the run before SIFT2/connectome construction.
+    This validates exclusion geometry, not the adequacy of the clinical mask.
+    """
+    from .masks import validate_binary
+    image = image3d(mask)
+    binary = validate_binary(image)
+    inverse = np.linalg.inv(image.affine)
+    count = 0
+    for track in nib.streamlines.load(str(path), lazy_load=True).streamlines:
+        vox = nib.affines.apply_affine(inverse, track)
+        if not np.isfinite(vox).all() or len(vox) < 2:
+            raise ValueError("Invalid retained streamline")
+        a, b = vox[:-1], vox[1:]
+        lower = np.floor(np.minimum(a, b) + .5 - 1e-8).astype(int)
+        upper = np.floor(np.maximum(a, b) + .5).astype(int)
+        if np.any(upper - lower > 1):
+            raise ValueError("Retained streamline is too sparse for the segment exclusion audit")
+        direction = b - a
+        for bits in np.ndindex(2, 2, 2):
+            cells = np.where(np.asarray(bits), upper, lower)
+            valid = np.all((cells >= 0) & (cells < np.asarray(binary.shape)), axis=1)
+            candidates = np.flatnonzero(valid)
+            candidates = candidates[binary[tuple(cells[candidates].T)]]
+            if not len(candidates):
+                continue
+            start, delta, cell = a[candidates], direction[candidates], cells[candidates]
+            zero = np.abs(delta) < 1e-12
+            outside = zero & ((start < cell - .5) | (start > cell + .5))
+            safe = np.where(zero, 1, delta)
+            t1, t2 = (cell - .5 - start) / safe, (cell + .5 - start) / safe
+            near = np.where(zero, -np.inf, np.minimum(t1, t2)).max(1)
+            far = np.where(zero, np.inf, np.maximum(t1, t2)).min(1)
+            hit = (~outside.any(1)) & (np.maximum(near, 0) <= np.minimum(far, 1))
+            if hit.any():
+                raise ValueError("Electrode exclusion audit failed: a retained streamline segment intersects the mask; no connectome accepted")
+        count += 1
+    if not count:
+        raise ValueError("No streamlines remain after electrode exclusion")
+    return {"retained_streamlines": count, "mask_intersections": 0,
+            "method": "continuous_segment_closed_voxel_box", "mask_sha256": digest(mask)}
+
+
+def execute(commands, out, threads=None, environment=None):
     if threads is not None:
         check_threads(threads)
     env = command_environment(threads or 1)
+    if environment:
+        if not set(environment).issubset({"SUBJECTS_DIR", "FREESURFER_HOME"}):
+            raise ValueError("Unsupported environment override")
+        env.update({k: str(v) for k, v in environment.items()})
+        if environment.get("FREESURFER_HOME"):
+            env["PATH"] = str(Path(environment["FREESURFER_HOME"]) / "bin") + ":" + env["PATH"]
     missing = sorted({cmd[0] for cmd in commands if shutil.which(cmd[0], path=env["PATH"]) is None})
     if missing:
         raise ValueError("Missing external tools: " + ", ".join(missing))
     versions = {}
     for name in sorted({cmd[0] for cmd in commands}):
         executable = shutil.which(name, path=env["PATH"])
-        if name.startswith("ants"):
+        if Path(name).name.startswith("ants") or Path(name).name in ("fspython", "mri_surf2surf", "mri_aparc2aseg", "mri_vol2vol"):
             versions[name] = {"path": executable, "sha256": digest(executable), "version": "not_queried"}
             continue
         flag = "--version" if name == "dcm2niix" else "-version"

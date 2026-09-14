@@ -22,6 +22,8 @@ from .provenance import new_run, read_json, require_separate_output, write_json
 FIELDS = {
     "environment": [], "inventory": ["dicom_dir"], "import-session": ["inventory_run"],
     "reconstruct": ["import_run"],
+    "import-nifti": [], "prepare-session": ["reconstruction_run"],
+    "finish-session": ["prepared_run", "approval"],
     "convert": ["dicom_dir"], "mask": ["reference", "centerlines"], "qc": ["reference", "mask"],
     "approve": ["reference", "mask", "atlas"], "connectome": ["config"],
     "reference": ["matrix", "nodes"], "embed": ["matrix", "nodes", "reference_run"],
@@ -63,7 +65,7 @@ class JobManager:
             if not isinstance(value, str) or not value.strip():
                 raise ValueError("Missing input: " + field)
             path = self.resolve_input(value)
-            is_directory = field in ("dicom_dir", "reference_run", "first_run", "second_run", "inventory_run", "import_run")
+            is_directory = field in ("dicom_dir", "reference_run", "first_run", "second_run", "inventory_run", "import_run", "reconstruction_run", "prepared_run")
             if path.is_dir() != is_directory:
                 raise ValueError("Wrong file/directory type: " + field)
             args += ["--" + field.replace("_", "-"), str(path)]
@@ -96,6 +98,33 @@ class JobManager:
                 for path in artifact["hashes"]:
                     self.resolve_input(path)
             args += ["--choices", str(job_root / "choices_input.json")]
+        if stage == "import-nifti":
+            from .nifti import validate_selection
+            selection = body.get("selection")
+            if not isinstance(selection, dict):
+                raise ValueError("Choose NIfTI images and review their identity")
+            self.resolve_input(selection["source_root"])
+            for files in validate_selection(selection, job_root).values():
+                for path in files.values():
+                    self.resolve_input(path)
+            args += ["--selection", str(job_root / "selection_input.json")]
+        if stage == "prepare-session":
+            settings = body.get("settings")
+            if not isinstance(settings, dict):
+                raise ValueError("Configure anatomical resources and mask settings")
+            if settings.get("centerlines"):
+                self.resolve_input(settings["centerlines"])
+            args += ["--settings", str(job_root / "settings_input.json")]
+        if stage == "finish-session":
+            from .workflow import prepared_paths
+            for path in prepared_paths(self.resolve_input(supplied["prepared_run"])).values():
+                self.resolve_input(path)
+            if supplied.get("reference_run"):
+                args += ["--reference-run", str(self.resolve_input(supplied["reference_run"]))]
+            count = body.get("streamlines", 1000000)
+            if not isinstance(count, int) or isinstance(count, bool):
+                raise ValueError("Streamline count must be an integer")
+            args += ["--streamlines", str(count)]
         if stage == "connectome":
             config_path = self.resolve_input(supplied["config"])
             config = read_json(config_path)
@@ -103,12 +132,12 @@ class JobManager:
                 if not isinstance(value, str):
                     raise ValueError("Prepared config paths must be strings")
                 self.resolve_input(config_path.parent / value)
-        if stage in ("connectome", "reconstruct"):
+        if stage in ("connectome", "reconstruct", "prepare-session", "finish-session"):
             threads = body.get("threads")
             if not isinstance(threads, int) or isinstance(threads, bool) or not 1 <= threads <= 128:
                 raise ValueError("Select an explicit thread count between 1 and 128")
             args += ["--threads", str(threads)]
-        if stage in ("convert", "connectome", "import-session", "reconstruct") and body.get("execute"):
+        if stage in ("convert", "connectome", "import-session", "reconstruct", "prepare-session", "finish-session") and body.get("execute"):
             if body.get("approve_compute") is not True:
                 raise ValueError("Explicit confirmation is required to execute external image-processing tools")
             args.append("--execute")
@@ -128,10 +157,12 @@ class JobManager:
             job_root = self.root / identifier
             arguments = self.arguments(body, job_root)
             job_root.mkdir(mode=0o700)
-            if body["stage"] == "import-session":
+            if body["stage"] in ("import-session", "import-nifti"):
                 write_json(job_root / "selection_input.json", body["selection"])
             if body["stage"] == "reconstruct":
                 write_json(job_root / "choices_input.json", body["choices"])
+            if body["stage"] == "prepare-session":
+                write_json(job_root / "settings_input.json", body["settings"])
             job = {"id": identifier, "stage": body["stage"], "status": "queued", "logs": [],
                    "created": time.time(), "started": None, "ended": None, "process": None,
                    "output_root": str(job_root), "report": None, "result_run": None,
@@ -181,7 +212,7 @@ class JobManager:
                     reports = list(Path(job["output_root"]).glob("*/mask_review.html"))
                     if reports:
                         job["report"] = str(reports[0])
-                    if job["stage"] == "reconstruct" and job["status"] == "completed":
+                    if job["stage"] in ("reconstruct", "prepare-session") and job["status"] == "completed":
                         job["status"] = "needs_qc"
                 job["returncode"] = code
         except Exception as exc:
@@ -278,8 +309,9 @@ def make_handler(manager, token):
                 if path == "/api/result":
                     identifier = parse_qs(urlparse(self.path).query).get("job", [""])[0]
                     job = manager.jobs.get(identifier)
-                    names = {"inventory": "inventory.json", "import-session": "converted.json",
-                             "environment": "environment.json", "reconstruct": "reconstruction.json"}
+                    names = {"inventory": "inventory.json", "import-session": "converted.json", "import-nifti": "converted.json",
+                             "environment": "environment.json", "reconstruct": "reconstruction.json",
+                             "prepare-session": "prepared.json", "finish-session": "session_result.json", "approve": "approval.json"}
                     if not job or job["status"] not in ("completed", "needs_qc") or job["stage"] not in names:
                         raise ValueError("No completed workflow result for this job")
                     result = read_json(Path(job["result_run"]) / names[job["stage"]])

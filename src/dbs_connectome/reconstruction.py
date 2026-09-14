@@ -17,7 +17,10 @@ from .qc import browser_report
 
 
 def selected_artifacts(import_run, choices):
-    converted = read_json(verified_output(import_run, "converted.json", "import-session"))
+    stage = read_json(Path(import_run) / "provenance.json")["stage"]
+    if stage not in ("import-session", "import-nifti"):
+        raise ValueError("Expected a completed DICOM or NIfTI import")
+    converted = read_json(verified_output(import_run, "converted.json", stage))
     artifacts = {a["id"]: a for a in converted["artifacts"]}
     selected = choices.get("artifacts", {})
     if not {"t1", "dwi"}.issubset(selected) or not set(selected).issubset({"t1", "dwi", "ct", "t2", "reverse_b0"}):
@@ -50,7 +53,7 @@ def check_image_header(path, dimensions):
 def diffusion_summary(artifact):
     image = check_image_header(artifact["image"], (4,))
     if not all(key in artifact for key in ("bval", "bvec", "json")):
-        raise ValueError("DWI requires dcm2niix JSON, b-values and b-vectors; ADC/FA are not valid inputs")
+        raise ValueError("DWI requires a metadata JSON, b-values and b-vectors; ADC/FA are not valid inputs")
     bval = np.atleast_1d(np.loadtxt(artifact["bval"]))
     bvec = np.loadtxt(artifact["bvec"])
     if bval.shape != (image.shape[3],) or bvec.shape != (3, image.shape[3]):
@@ -196,12 +199,18 @@ def reconstruction_plan(import_run, choices, out, threads):
                 "-o", p(role + "_in_b0.nii.gz"), "-n", "Linear", "-t", p("t1_to_b0_0GenericAffine.mat"),
                 "-t", p(role + "_to_t1_0GenericAffine.mat")])
     outputs = {"dwi": p("dwi_2mm.mif"), "fod": p("wm_norm.mif"), "reference": p("b0_brain_2mm.nii.gz"),
-               "brain_mask": p("brain_mask_2mm.nii.gz"), "t1_in_b0": p("t1_to_b0_Warped.nii.gz")}
+               "brain_mask": p("brain_mask_2mm.nii.gz"), "t1_in_b0": p("t1_to_b0_Warped.nii.gz"),
+               "t1_transform": p("t1_to_b0_0GenericAffine.mat")}
+    if "ct" in artifacts:
+        outputs["ct_in_b0"] = p("ct_in_b0.nii.gz")
     return artifacts, summary, commands, outputs
 
 
 def reconstruct(import_run, choices, out, threads, execute_tools=False):
     require_separate_output(out, import_run)
+    original = read_json(Path(import_run) / "converted.json").get("source_root")
+    if original:
+        require_separate_output(out, original)
     artifacts, summary, commands, outputs = reconstruction_plan(import_run, choices, out, threads)
     out = Path(out)
     write_json(out / "plan.json", commands)
@@ -230,6 +239,7 @@ def reconstruct(import_run, choices, out, threads, execute_tools=False):
         (out / "mask_review.html").write_text(html)
         status = "completed"
         write_json(out / "reconstruction.json", {"status": "reconstruction_qc_required", "outputs": outputs,
+            "import_run": str(Path(import_run).resolve()), "source_root": original, "artifacts": choices["artifacts"],
             "hashes": {p: digest(p) for p in outputs.values()},
             "next": ["Inspect raw/denoise/eddy residuals and rotated gradients", "Review T1/CT/DWI registration",
                      "Generate and review surface/NextBrain atlas and 5TT", "Localize leads and approve signal-void exclusion mask",

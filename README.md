@@ -5,18 +5,18 @@ Scripts for Analysis for brains post deep brain stimulation electrode implantati
 ## DBS Native Connectome — development prototype
 
 Research software for electrode-aware, native-space structural connectomics.
-**Development prototype. Not clinically validated or an end-to-end DICOM pipeline. No validated release yet.**
+**Development prototype with linked processing stages. Not independently end-to-end or clinically validated. No validated release yet.**
 Target repository: https://github.com/taichisayanagi/Post_DBS_Connectome_analysis .
 New code is MIT-licensed. Dependencies and atlases retain their own licenses.
 No patient data, brain images, private study matrices or third-party atlases are distributed.
 
 **[Current development progress and remaining milestones](docs/STATUS.md)**
 
-**New: [guided DICOM intake and reconstruction adapter](docs/DICOM_WORKFLOW.md).** The browser
-now inventories series, checks patient/visit selection, converts selected images and plans/runs
-acquisition-gated DWI/FOD processing and candidate rigid registration. The full DICOM-to-gradient
-route remains incomplete: automatic lead/mask/atlas/tractogram generation and real-data validation
-are still required.
+**New: [NIfTI / DICOM linked workflow](docs/LINKED_WORKFLOW.md).** The browser accepts raw NIfTI
+or reviewed DICOM series and links DWI/FOD reconstruction, anatomical registration, installed
+FreeSurfer/NextBrain processing, candidate electrode masking, ACT tractography, refitted SIFT2,
+connectome construction and G1–G4. Image QC is a mandatory checkpoint, not an automatic approval.
+CT localization is a conservative candidate detector, not the study's void-follow algorithm.
 
 ## Installation model
 
@@ -25,16 +25,23 @@ computer**. FSL, MRtrix3, FreeSurfer, NextBrain resources, MATLAB, SPM12, the Py
 atlases and model weights are not bundled. No all-in-one container is required.
 Only the dependencies for the selected, implemented operation are required.
 See [local dependencies and the planned environment checker](docs/LOCAL_DEPENDENCIES.md).
-Installing these tools does not implement the reconstruction stages that are still missing below.
+The installed tools, atlas resources and acquisition parameters must be configured and reviewed.
 
 ## Current functionality
 
 - Explicit local DICOM conversion using dcm2niix (dry-run unless `--execute`).
+- Private-copy NIfTI intake with bval/bvec consistency checks and original-byte verification.
+- FreeSurfer surface mapping and NextBrain full-atlas commands; explicit cohort-frozen label mapping,
+  nearest-neighbor atlas transfer and normalized five-tissue ACT images.
+- Automatic elongated CT-metal candidates or reviewed RAS centerlines; ambiguous detections stop.
+- QC-gated automatic handoff into ACT tractography, exclusion, SIFT2 and gradients.
+- Independent continuous streamline-segment / mask-voxel intersection audit before SIFT2.
 - Candidate masks from **already registered, reviewed** electrode centerlines in NIfTI RAS+ millimetres.
 - Study-style 6-connected dilation with an explicit 2-mm-grid check.
 - Union of already anatomically registered masks with a hash-bound registration-review record.
 - Human QC approval bound to the exact mask, b0 reference and parcellation hashes.
-- Self-contained local browser QC: three slice sliders, mask overlay/opacity and intensity window.
+- Self-contained local browser QC: three slice sliders, mask overlay/opacity, atlas boundaries,
+  b0/T1/CT backgrounds and five tissue compartments where supplied.
   No external services or CDN. Reports contain private anatomy and must not be published.
 - Prepared-input MRtrix command plans: mask-intersecting streamline exclusion, SIFT2 refit,
   weighted connectome and endpoint assignments. Execution requires `--execute --threads N`.
@@ -44,10 +51,9 @@ Installing these tools does not implement the reconstruction stages that are sti
 - Reference-bound longitudinal 4D parcel displacement and per-axis change.
 - Timestamped, non-overwriting private run folders, hashes and decoded voxel fingerprints.
 
-**Not implemented yet:** automatic CT lead localization;
-the paper's b0 void-following algorithm and reviewed island repair; FreeSurfer/NextBrain atlas construction;
-ACT tractogram generation; longitudinal transform orchestration; cohort LOSO orchestration;
-CT/atlas/multi-session browser overlays; comprehensive dependency/resource validation and external end-to-end validation.
+**Not implemented yet:** the paper's b0 void-following algorithm and reviewed island repair;
+MRI-only automatic lead localization; longitudinal mask-transform and cohort LOSO orchestration;
+multi-session browser overlays; comprehensive model/license validation; independent end-to-end validation.
 
 The centerline tube is a candidate-mask utility, **not** a reproduction of the study's final void-follow
 mask. Its radius is not a universal artifact boundary. CT metal geometry and diffusion signal loss
@@ -90,9 +96,9 @@ Full tool logs are in the private run directory. Jobs are not resumed after serv
 For gradient jobs, the optional completed-connectome run field enables hash verification of
 the matrix's electrode-exclusion lineage; omitting it is explicitly recorded as unverified.
 
-Use the DICOM workflow tab for the implemented import/preprocessing/rigid-registration adapter.
-Atlas, electrode localization/void-following and tractogram generation remain external steps.
-The GUI is not evidence of complete or validated DICOM reconstruction.
+Use Image workflow for linked processing and Advanced steps for individual operations.
+The common node TSV and local atlas resources require expert setup. This version does not automate
+every cohort-design decision. The GUI is not evidence of validated reconstruction.
 
 ### Prepared-input connectome
 

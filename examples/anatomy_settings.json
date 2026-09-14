@@ -1,0 +1,17 @@
+{
+  "resources": {
+    "freesurfer_home": "/installed/freesurfer",
+    "fsaverage": "/installed/freesurfer/subjects/fsaverage",
+    "lh_annotation": "/private/resources/lh.Schaefer400_7Net.annot",
+    "rh_annotation": "/private/resources/rh.Schaefer400_7Net.annot",
+    "nextbrain_atlas": "/private/resources/nextbrain/atlas_full",
+    "nodes": "/private/resources/cohort_frozen_nodes.tsv"
+  },
+  "reconstruction_reviewed": false,
+  "mask_mode": "ct_candidate",
+  "ct_hu_reviewed": false,
+  "ct_threshold_hu": 2000,
+  "expected_leads": 2,
+  "radius_mm": 3.5,
+  "dilation_passes": 1
+}

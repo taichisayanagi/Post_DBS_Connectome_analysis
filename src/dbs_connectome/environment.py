@@ -13,8 +13,8 @@ TOOLS = {
                            "dwibiascorrect", "dwiextract", "mrmath", "mrgrid", "mrcalc",
                            "dwi2response", "dwi2fod", "mtnormalise", "mrcat", "N4BiasFieldCorrection"],
     "Registration": ["antsRegistrationSyNQuick.sh", "antsApplyTransforms"],
-    "FreeSurfer / surface atlas": ["recon-all", "mri_surf2surf", "mri_aparc2aseg", "mri_convert", "5ttgen"],
-    "Tractography / connectome": ["tckgen", "tckedit", "tcksift2", "tck2connectome", "mrinfo"],
+    "FreeSurfer / surface atlas": ["recon-all", "mri_surf2surf", "mri_aparc2aseg", "mri_convert", "mri_vol2vol", "fspython", "5ttgen"],
+    "Tractography / connectome": ["5tt2gmwmi", "tckgen", "tckedit", "tcksift2", "tck2connectome", "mrinfo"],
     "Optional MATLAB bridge": ["matlab"],
 }
 
