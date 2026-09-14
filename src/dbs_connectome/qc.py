@@ -50,19 +50,20 @@ TEMPLATE = r'''<!doctype html>
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; connect-src 'none'">
 <title>DBS Native Connectome | mask review</title>
 <style>
-*{box-sizing:border-box}body{margin:0;background:white;color:#1a2630;font:15px/1.6 system-ui,sans-serif}
-main{max-width:1280px;margin:auto;padding:28px}header{padding-bottom:20px;border-bottom:1px solid #ddd}
-.eyebrow{font-size:12px;letter-spacing:.13em;color:#697680}h1{font-size:30px;margin:8px 0}h2{font-size:17px;margin:6px 0}
-.warning{background:#fff6e8;padding:12px 16px;border-left:4px solid #bb6d18;margin:20px 0}
-.controls{display:flex;gap:22px;align-items:center;flex-wrap:wrap;margin:20px 0}input{accent-color:#9b1e36}
-.views{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:24px}canvas{width:100%;background:#080808;image-rendering:pixelated}
-.caption{color:#586874;font-size:12px}label{display:block}output{font-variant-numeric:tabular-nums}
-.slice{width:100%}.notes{margin-top:28px;display:grid;grid-template-columns:1fr 1fr;gap:32px}code{font-size:11px;word-break:break-all}
-@media(max-width:800px){.views,.notes{grid-template-columns:1fr}main{padding:16px}}
+*{box-sizing:border-box}body{margin:0;background:#fff;color:#202124;font:16px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif}
+main{max-width:1380px;margin:auto;padding:12px}header{display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding-bottom:8px;border-bottom:1px solid #b9bdc2}
+h1{font-size:16px;font-weight:600;margin:0}h2{font-size:14px;font-weight:500;margin:0;padding:5px 7px;background:#e9eaec;border:1px solid #b9bdc2;border-bottom:0}
+.warning{font-size:12px;color:#6a5741;padding:7px 0;margin:0;border-bottom:1px solid #ddd}
+.controls{display:flex;gap:16px;align-items:center;flex-wrap:wrap;padding:9px;margin:10px 0;background:#f0f0f0;border:1px solid #b9bdc2;font-size:14px}input{accent-color:#315e8d}input[type=range]{width:100px;vertical-align:middle}
+button{padding:4px 10px;font-family:inherit;font-size:14px;border:1px solid #a7abb0;border-radius:3px;background:linear-gradient(#fff,#e7e8ea);min-height:29px;color:#202124;cursor:pointer}
+button:focus-visible,input:focus-visible{outline:2px solid #315e8d;outline-offset:2px}
+.views{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}canvas{display:block;width:100%;background:#080808;image-rendering:pixelated}
+.caption{color:#62676c;font-size:12px}label{display:block;font-size:14px}output{font-variant-numeric:tabular-nums}
+input.slice{width:100%}.notes{margin-top:14px;display:grid;grid-template-columns:1fr 1fr;gap:16px;font-size:14px}.notes h2{background:none;border:0;padding:0;font-weight:600}.notes ol{padding-left:20px}code{font-size:12px;word-break:break-all}
+@media(max-width:600px){.views,.notes{grid-template-columns:1fr}main{padding:8px}header{flex-wrap:wrap}}
 </style></head><body><main>
-<header><div class="eyebrow">RESEARCH PROTOTYPE / LOCAL QC</div><h1>Electrode-mask review</h1>
-<div>Inspect spatial alignment and the entire signal void before approving downstream analysis.</div></header>
-<div class="warning">__NOTICE__<br>This page records no approval. Same-grid checks do not establish anatomical registration.</div>
+<header><h1>Electrode-mask review</h1><span class="caption">b0 / exclusion mask · Display only</span></header>
+<div class="warning">__NOTICE__<br>No approval is recorded here. Matching image grids do not establish anatomical registration.</div>
 <div class="controls"><label><input id="showMask" type="checkbox" checked> Show mask</label>
 <label>Mask opacity <input id="alpha" type="range" min="0" max="100" value="55"></label>
 <label>Display window <input id="window" type="range" min="20" max="255" value="255"></label>
@@ -73,7 +74,7 @@ main{max-width:1280px;margin:auto;padding:28px}header{padding-bottom:20px;border
 <li>Spurious disconnected components and non-lead dark structures</li><li>Native parcellation alignment in a separate atlas overlay</li>
 <li>Registered union coverage at each longitudinal visit</li></ol>
 <p class="caption">This viewer shows one b0 and mask, not CT, atlas or multiple timepoints. It does not complete all five checks.
-Approval must be recorded separately by the reviewer using the CLI after inspecting the necessary images.</p></section>
+Approval must be recorded separately through the processing interface or CLI after inspecting the necessary images.</p></section>
 <section><h2>Traceability</h2><div id="stats"></div><p class="caption">Mask SHA-256<br><code id="maskHash"></code></p>
 <p class="caption">Reference SHA-256<br><code id="refHash"></code></p><p class="caption">Images are reoriented to RAS+ for display only.
 Planes follow the image grid; an oblique acquisition is not displayed as resampled anatomical orthogonal planes.

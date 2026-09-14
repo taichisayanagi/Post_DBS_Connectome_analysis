@@ -5,7 +5,7 @@ This is not an end-to-end validated DICOM pipeline or a clinical tool.
 
 | Workstream | Current state | Next acceptance check |
 |---|---|---|
-| Local browser GUI | Implemented: input browser, job queue, states, elapsed time, tool logs, cancellation | More failure/interruption testing; persistent restart/recovery |
+| Local browser GUI | Control-panel layout: directories, grouped operations, explicit settings, job table and log; input browser and cancellation retained | More failure/interruption testing; persistent restart/recovery |
 | Mask QC | Implemented: three-plane b0/mask viewer, slices, opacity/window, hash-bound manual approval | CT, atlas and longitudinal overlays; independent expert review |
 | DICOM import | Conversion command and dry run implemented | Explicit series inventory, pairing, acquisition checks |
 | CT/MRI/DWI reconstruction | Not implemented | Lead localization, registration, preprocessing, FOD, atlas and tractogram generation |
@@ -16,9 +16,11 @@ This is not an end-to-end validated DICOM pipeline or a clinical tool.
 
 ## Evidence obtained so far
 
-- 38 synthetic unit/integration tests passed locally on macOS/Python 3.12. They cover geometry, mask approval hashes, label indexing,
+- 41 synthetic unit/integration/static-interface tests passed locally on macOS/Python 3.12. They cover geometry, mask approval hashes, label indexing,
   gradient reference integrity, GUI access controls, job execution and cancellation records.
 - A local browser QC job using an artificial phantom was queued, completed and opened in the GUI.
+  This browser interaction check preceded the control-panel redesign. The redesign was checked
+  with JavaScript syntax and static-interface/backend tests; visual browser QA was not repeated.
 - A wheel was built and installed into a separate virtual environment using existing scientific
   dependencies; the CLI entry point and bundled GUI asset were verified outside the source checkout.
   This is a packaging smoke test, not a dependency-isolated clean installation.
@@ -41,6 +43,7 @@ private validation artifacts are included here. Tests are not evidence of clinic
 The interface reports elapsed time, current external tool and local log excerpts. It does not
 invent percentages or estimated completion times for tools that do not expose them.
 
+See [interface design](GUI_DESIGN.md) for the Lead-DBS-inspired control-panel organization.
 The next major milestone is an audited reconstruction path from DICOM to reviewed prepared inputs.
 After that: end-to-end independent-data validation and reproducibility of the manuscript outputs.
 

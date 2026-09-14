@@ -1,72 +1,148 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'self'; frame-src 'self'; img-src data:">
-<title>Post-DBS Connectome — research workspace</title>
+<title>Post-DBS Connectome</title>
 <style>
-:root{--ink:#182832;--muted:#60757e;--line:#dce5e8;--accent:#126a64;--light:#edf6f4;--warn:#8d5611}
-*{box-sizing:border-box}body{margin:0;background:#fff;color:var(--ink);font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
-header{padding:22px 30px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--line)}
-h1{font-size:23px;margin:4px 0;font-weight:650;letter-spacing:-.04em}h2{font-size:19px;margin:0 0 14px}h3{font-size:15px;margin:0 0 4px}
-.eyebrow{font-size:10px;letter-spacing:.16em;color:var(--muted)}.pill{font-size:11px;padding:5px 10px;border-radius:20px;background:var(--light);color:var(--accent)}
-.shell{display:grid;grid-template-columns:220px 1fr;min-height:calc(100vh - 95px)}aside{background:#f8fafb;padding:28px 22px;border-right:1px solid var(--line)}
-aside p{font-size:12px;color:var(--muted)}.nav{display:block;width:100%;text-align:left;margin:4px 0;padding:10px;border:0;background:transparent;color:var(--muted);border-radius:6px}.nav.active{background:var(--light);color:var(--accent);font-weight:600}
-main{padding:26px 34px;max-width:1500px}.notice{padding:13px 16px;border-left:3px solid #bd862f;background:#fff9ef;color:#724b13;margin-bottom:24px;font-size:13px}
-.stages{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin:16px 0 28px}.stage{padding:13px;border:1px solid var(--line);border-radius:7px}.stage small{display:block;margin-top:8px;color:var(--accent)}.stage.pending{background:#f8fafb;color:#78868c}.stage.pending small{color:#78868c}
-.two{display:grid;grid-template-columns:minmax(300px,450px) minmax(350px,1fr);gap:30px}.panel{border:1px solid var(--line);padding:22px;border-radius:8px}
-label{display:block;color:var(--muted);font-size:12px;margin:12px 0 5px}select,input[type=text],input[type=number]{width:100%;padding:10px 11px;border:1px solid #c7d4d9;border-radius:5px;background:#fff;font:inherit;color:var(--ink)}
-.inputrow{display:flex;gap:6px}.inputrow input{min-width:0}button{cursor:pointer;font:inherit;border:1px solid #c7d4d9;border-radius:5px;background:#fff;color:var(--ink);padding:9px 12px}button:hover{border-color:var(--accent)}button.primary{background:var(--accent);color:white;border:0;min-width:135px;margin-top:18px}button:disabled{opacity:.4;cursor:not-allowed}
-.check{font-size:12px;margin:10px 0;color:var(--ink)}.check input{margin-right:7px;accent-color:var(--accent)}.hint{font-size:12px;color:var(--muted);margin-top:8px}.error{color:#a21d32;white-space:pre-wrap;font-size:12px}
-.job{padding:14px 0;border-bottom:1px solid var(--line)}.jobhead{display:flex;justify-content:space-between;gap:12px;align-items:center}.state{font-size:11px;font-weight:600;text-transform:uppercase;color:var(--accent)}.state.failed{color:#a21d32}.state.running{color:#a16c13}.jobmeta{font-size:12px;color:var(--muted);margin:5px 0;overflow-wrap:anywhere}.step{font:12px ui-monospace,monospace;margin:10px 0}.pulse{height:3px;background:var(--light);overflow:hidden}.pulse:after{content:"";display:block;width:30%;height:3px;background:var(--accent);animation:move 2s infinite ease-in-out}@keyframes move{0%{transform:translateX(-100%)}100%{transform:translateX(400%)}}
-pre{background:#f6f8fa;padding:12px;white-space:pre-wrap;overflow-wrap:anywhere;max-height:220px;overflow:auto;font-size:11px}.empty{padding:50px 12px;text-align:center;color:var(--muted)}.rowbuttons{display:flex;gap:8px;margin-top:8px}.rowbuttons button{font-size:12px;padding:6px 9px}
-dialog{border:1px solid var(--line);border-radius:10px;padding:24px;width:min(760px,90vw)}dialog::backdrop{background:#172b3a66}.files{max-height:55vh;overflow:auto;margin:14px 0}.file{display:flex;align-items:center;justify-content:space-between;padding:8px;border-bottom:1px solid var(--line);gap:8px}.filepath{font-size:12px;overflow-wrap:anywhere;color:var(--muted)}.hidden{display:none!important}iframe{width:100%;height:80vh;border:0}footer{font-size:11px;color:var(--muted);margin-top:22px}
-@media(max-width:1050px){.shell{grid-template-columns:1fr}aside{display:none}.two{grid-template-columns:1fr}.stages{grid-template-columns:repeat(3,1fr)}}
-</style></head><body>
-<header><div><div class="eyebrow">NATIVE SPACE · ELECTRODE-AWARE · AUDITABLE</div><h1>Post-DBS Connectome</h1></div><span class="pill">LOCAL ONLY · 0.1.0.dev0</span></header>
-<div class="shell"><aside><div class="eyebrow">RESEARCH WORKSPACE</div><button class="nav active" id="navWorkspace">Analysis workspace</button><button class="nav" id="navQC">QC report</button><p>Runs stay on this computer.<br>No telemetry or cloud upload.</p><hr><p>Human QC is required before connectome execution. This development version is not for clinical decisions.</p></aside>
-<main><div class="notice"><strong>Development preview — not a complete DICOM pipeline.</strong> CT/MRI registration, diffusion preprocessing and atlas/tractogram generation are not yet automated. Use reviewed prepared inputs for downstream analysis.</div>
-<section id="workspace"><h2>Pipeline readiness</h2><div class="stages">
-<div class="stage"><h3>01 · Import</h3><span>DICOM conversion</span><small>Available · series selection manual</small></div>
-<div class="stage pending"><h3>02 · Reconstruct</h3><span>Register · preprocess · atlas</span><small>Not implemented</small></div>
-<div class="stage"><h3>03 · Mask & QC</h3><span>Candidate · review gate</span><small>Partial · CT localization pending</small></div>
-<div class="stage"><h3>04 · Connectome</h3><span>Exclude · SIFT2 · matrix</span><small>Prepared inputs only</small></div>
-<div class="stage"><h3>05 · Gradients</h3><span>Embed · longitudinal change</span><small>Available · reference explicit</small></div></div>
-<div class="two"><section class="panel"><h2>New analysis job</h2><label for="stage">Stage</label><select id="stage"></select><p id="stageHint" class="hint"></p><form id="jobForm"><div id="fields"></div>
-<div id="resources" class="hidden"><label for="threads">CPU threads (explicit choice)</label><input id="threads" type="number" value="8" min="1" max="128"></div>
-<div id="execution" class="hidden"><label class="check"><input id="execute" type="checkbox">Execute external tools (unchecked = plan only)</label><label class="check"><input id="computeConsent" type="checkbox">I have reviewed inputs and approve this local computation</label></div>
-<div id="approval" class="hidden"><label>Reviewer identifier</label><input id="reviewer" type="text"><div id="checks"></div></div>
-<button class="primary" id="submit" type="submit">Queue job</button><p class="hint">One job runs at a time. There is no invented percentage for stages that do not report one.</p><p id="error" class="error" role="alert"></p></form></section>
-<section class="panel"><div class="jobhead"><h2>Jobs & progress</h2><span id="connection" class="pill">Connecting</span></div><div id="jobs" class="empty">No jobs yet. Start with a synthetic QC report or a dry-run plan.</div></section></div>
-<footer id="storage"></footer></section>
-<section id="qcPane" class="hidden"><div class="jobhead"><h2>Mask QC report</h2><button id="back">Back to workspace</button></div><p class="hint">QC does not automatically approve a mask. Review CT, atlas and longitudinal registration separately.</p><iframe id="qcFrame" title="Mask QC" sandbox="allow-scripts allow-same-origin"></iframe></section>
-</main></div>
-<dialog id="picker"><h2>Select local input</h2><div class="inputrow"><input id="browsePath" type="text" aria-label="Directory path"><button id="browseGo" type="button">Open</button></div><p class="hint">Only configured data/output roots are accessible.</p><div id="files" class="files"></div><div class="rowbuttons"><button id="pickDir" type="button">Use this directory</button><button id="closePicker" type="button">Cancel</button></div><p id="browseError" class="error"></p></dialog>
+:root{color-scheme:light;--surface:#f0f0f0;--line:#b9bdc2;--ink:#202124;--muted:#62676c;--select:#e3ebf5;--accent:#315e8d}
+*{box-sizing:border-box}body{margin:0;background:var(--surface);color:var(--ink);font:16px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif}
+button,input,select{font:inherit;color:inherit}button{font-size:14px;min-height:30px;padding:4px 14px;border:1px solid #a7abb0;border-radius:3px;background:linear-gradient(#fff,#e7e8ea);cursor:pointer}
+button:hover:not(:disabled){border-color:#71777f;background:#fff}button:active:not(:disabled){background:#dddfe2}button:disabled{color:#888d93;cursor:default}
+button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+button.primary{border-color:#59748f;background:#e4ebf2;font-weight:600;min-width:168px}
+input[type=text],input[type=number],select{font-size:14px;border:1px solid #aeb3b9;border-radius:2px;background:#fff;padding:5px 7px;min-height:30px;max-width:100%}
+input[type=text]{width:100%;min-width:0}input[readonly]{background:#f8f8f8;color:#52575d}input[type=checkbox]{accent-color:var(--accent)}
+header{display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding:12px 18px 10px;border-bottom:1px solid var(--line);background:#fafafa}
+h1{font-size:18px;font-weight:600;margin:0;letter-spacing:0}h2{font-size:15px;font-weight:600;margin:0}p{margin:8px 0}.meta{font-size:12px;color:var(--muted)}
+main{max-width:1380px;margin:auto;padding:12px 16px}fieldset{min-width:0;margin:0;padding:12px;border:1px solid var(--line);border-radius:0}legend{padding:0 5px;font-size:14px;font-weight:600}
+.directory-grid{display:grid;grid-template-columns:105px minmax(0,1fr);gap:7px 10px;align-items:center}.directory-grid label{font-size:14px}
+.tabs{display:flex;gap:2px;margin-top:14px;border-bottom:1px solid #9fa6ae}.tabs button{border-bottom:0;border-radius:3px 3px 0 0;background:#e4e5e7;min-width:115px}
+.tabs button[aria-selected=true]{background:var(--surface);font-weight:600;position:relative;top:1px}.workspace{padding-top:12px}
+.setup{display:grid;grid-template-columns:260px minmax(0,1fr);gap:12px;align-items:start}.step-select{width:100%;height:335px;padding:4px;background:#fff;line-height:1.65}
+.step-select optgroup{font-weight:600;font-size:13px;padding-top:5px}.step-select option{font-weight:400;font-size:14px;padding:5px 7px}.step-select option:checked{background:var(--select);color:#173d68}
+.description{font-size:14px;color:#50565d;margin:0 0 12px;max-width:78ch}.limitation{font-size:13px;color:#65604f;margin:12px 0 0}
+.field{display:grid;grid-template-columns:190px minmax(0,1fr);gap:8px;align-items:center;margin:8px 0}.field>label{font-size:14px}.inputrow{display:flex;gap:5px;min-width:0}.inputrow button{flex:none;min-width:72px}
+.method{margin:12px 0 0;border-top:1px solid #d2d5d8;padding-top:9px;font-size:13px;color:#525960}.method dt{float:left;clear:left;width:150px}.method dd{margin-left:160px;margin-bottom:4px}
+.options{margin-top:12px;padding-top:10px;border-top:1px solid #d2d5d8}.options label{display:block;font-size:14px;margin:7px 0}.options .threads{display:flex;align-items:center;gap:12px}.threads input{width:75px}
+.actions{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:16px;padding-top:12px;border-top:1px solid #c8cbd0}.actions .meta{max-width:52ch}.error{font-size:14px;color:#9c2330;white-space:pre-wrap;margin:8px 0 0}.error:empty{display:none}
+.execution{margin-top:14px}.execution-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}.table-scroll{overflow:auto;max-height:205px;background:white;border:1px solid #c0c4ca}
+table{border-collapse:collapse;width:100%;font-size:14px;text-align:left}th{position:sticky;top:0;background:#e8e9eb;font-weight:500;padding:6px 9px;border-bottom:1px solid #b8bdc3;white-space:nowrap}td{padding:6px 9px;border-bottom:1px solid #e6e7e9;vertical-align:middle}.job-row.selected{background:var(--select)}.job-row:hover{background:#f0f3f7}.job-row.selected:hover{background:var(--select)}.job-row button{min-height:25px;padding:1px 8px;font-size:13px}
+.job-name{border:0;background:transparent!important;padding:0!important;text-align:left;color:#193e65}.state{white-space:nowrap}.state.failed{color:#a02430}.state.running{color:#765809}.state.completed{color:#306542}.empty{text-align:center;color:#747980;padding:22px}
+.elapsed{font-variant-numeric:tabular-nums;white-space:nowrap}.log-head{display:flex;justify-content:space-between;gap:12px;align-items:center;margin:12px 0 6px;font-size:13px}.step{overflow-wrap:anywhere;color:#525960}.log{height:142px;overflow:auto;margin:0;padding:8px 10px;background:#fff;border:1px solid #c0c4ca;white-space:pre-wrap;overflow-wrap:anywhere;font:12px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace}
+.output{display:grid;grid-template-columns:76px minmax(0,1fr);align-items:center;gap:8px;margin-top:7px;font-size:13px}.output input{font-size:12px;min-height:26px}.statusbar{display:flex;justify-content:space-between;gap:12px;margin-top:10px;font-size:12px;color:#5d6269}.connected{color:#306542}.disconnected{color:#a02430}
+#qcPane{padding-top:12px}iframe{display:block;width:100%;height:calc(100vh - 245px);min-height:450px;border:1px solid #bcc1c8;background:white}.qc-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:9px}.qc-toolbar p{font-size:13px;color:#5e646b;margin:0}
+dialog{border:1px solid #8e959e;border-radius:4px;padding:16px;background:var(--surface);width:min(780px,94vw)}dialog::backdrop{background:#20232966}dialog h2{margin-bottom:12px}.files{max-height:50vh;overflow:auto;background:#fff;border:1px solid var(--line);margin:10px 0}.file{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:6px 9px;border-bottom:1px solid #eee;font-size:14px}.file span{overflow-wrap:anywhere}.dialog-actions{display:flex;justify-content:flex-end;gap:7px}.hidden{display:none!important}
+@media(max-width:850px){.setup{grid-template-columns:220px minmax(0,1fr)}.field{grid-template-columns:1fr;gap:4px}main{padding:10px}.method dt{float:none;width:auto}.method dd{margin:0 0 7px}}
+@media(max-width:620px){.setup{grid-template-columns:1fr}.step-select{height:180px}.directory-grid{grid-template-columns:1fr;gap:4px}.actions,header{align-items:flex-start;flex-wrap:wrap}.statusbar{flex-wrap:wrap}fieldset{padding:9px}}
+</style>
+</head>
+<body>
+<header><h1>Post-DBS Connectome</h1><span class="meta">0.1.0.dev0 · Development build · Research use only</span></header>
+<main>
+<fieldset><legend>Directories</legend><div class="directory-grid">
+<label for="dataRoot">Input directory</label><input id="dataRoot" type="text" readonly aria-label="Input directory">
+<label for="runRoot">Working directory</label><input id="runRoot" type="text" readonly aria-label="Working directory">
+</div></fieldset>
+<nav class="tabs" role="tablist" aria-label="Analysis views">
+<button id="navWorkspace" type="button" role="tab" aria-selected="true" aria-controls="workspace">Processing</button>
+<button id="navQC" type="button" role="tab" aria-selected="false" aria-controls="qcPane" disabled>Mask review</button>
+</nav>
+<section id="workspace" class="workspace" role="tabpanel" aria-labelledby="navWorkspace">
+<div class="setup">
+<fieldset><legend>Processing step</legend>
+<label class="meta" for="stage">Select one operation</label><select id="stage" class="step-select" size="13"></select>
+<p class="limitation">Registration, DWI preprocessing, atlas generation and tractography must currently be performed externally.</p>
+</fieldset>
+<fieldset><legend id="operationTitle">Mask review</legend>
+<p id="stageHint" class="description"></p>
+<form id="jobForm">
+<div id="fields"></div><dl id="method" class="method hidden"></dl>
+<div id="resources" class="options hidden"><label class="threads" for="threads">CPU threads <input id="threads" type="number" value="8" min="1" max="128"></label></div>
+<div id="execution" class="options hidden">
+<label><input id="execute" type="checkbox"> Execute processing commands</label>
+<label><input id="computeConsent" type="checkbox"> Inputs reviewed; local computation approved</label>
+<p class="meta">Unchecked: create a command plan without running image processing.</p>
+</div>
+<div id="approval" class="options hidden"><label for="reviewer">Reviewer identifier</label><input id="reviewer" type="text"><div id="checks"></div></div>
+<div class="actions"><span id="runHint" class="meta">Results are saved in a new run directory.</span><button class="primary" id="submit" type="submit">Run selected step</button></div>
+<p id="error" class="error" role="alert"></p>
+</form>
+</fieldset>
+</div>
+<fieldset class="execution"><legend>Execution</legend>
+<div class="execution-head"><span id="queueSummary" class="meta">No jobs</span><span id="connection" class="meta" role="status">Connecting…</span></div>
+<div class="table-scroll"><table aria-label="Analysis jobs"><thead><tr><th scope="col">Operation</th><th scope="col">State</th><th scope="col">Elapsed</th><th scope="col">Output</th></tr></thead><tbody id="jobs"><tr><td colspan="4" class="empty">No jobs in this session</td></tr></tbody></table></div>
+<div class="log-head"><span>Process log</span><span id="currentStep" class="step">—</span></div>
+<pre id="jobLog" class="log" aria-label="Selected job log">Select a job to inspect its log.</pre>
+<div class="output"><label for="jobOutput">Directory</label><input id="jobOutput" type="text" readonly></div>
+</fieldset>
+<div class="statusbar"><span>Local processing · One job at a time</span><span>End-to-end DICOM reconstruction is not yet validated</span></div>
+</section>
+<section id="qcPane" class="hidden" role="tabpanel" aria-labelledby="navQC">
+<div class="qc-toolbar"><p>Display only. Record QC approval separately after registration and atlas review.</p><button id="back" type="button">Back to processing</button></div>
+<iframe id="qcFrame" title="Electrode mask review" sandbox="allow-scripts allow-same-origin"></iframe>
+</section>
+</main>
+<dialog id="picker" aria-labelledby="pickerTitle"><h2 id="pickerTitle">Select input</h2>
+<div class="inputrow"><input id="browsePath" type="text" aria-label="Directory path"><button id="browseGo" type="button">Open</button></div>
+<p class="meta">Files remain on this computer. Only the configured input and working directories are accessible.</p>
+<div id="files" class="files"></div><div class="dialog-actions"><button id="pickDir" type="button">Use this directory</button><button id="closePicker" type="button">Cancel</button></div><p id="browseError" class="error" role="alert"></p>
+</dialog>
 <script>
+'use strict';
 const token=new URLSearchParams(location.search).get('token')||sessionStorage.getItem('dbs-token')||'';
 sessionStorage.setItem('dbs-token',token);history.replaceState({},'',location.pathname);
-const stages={convert:{title:'DICOM → NIfTI',fields:['dicom_dir'],hint:'Select a DICOM series directory. This is conversion, not complete de-identification or series adjudication.'},
-mask:{title:'Candidate mask from reviewed centerlines',fields:['reference','centerlines'],hint:'Requires 2-mm b0 and hash-bound RAS+ centerlines already registered to it. Not the study void-follow algorithm.'},
-qc:{title:'Browser mask QC',fields:['reference','mask'],hint:'Produces a local three-plane slice viewer. Does not mark the mask as approved.'},
-approve:{title:'Record human QC approval',fields:['reference','mask','atlas'],hint:'Only after inspecting registration, full signal void, spurious components and native atlas.'},
-connectome:{title:'Prepared inputs → masked connectome',fields:['config'],hint:'Prepared-session JSON required. Excludes streamlines, refits SIFT2 and maps weights to nodes. Expensive when executed.'},
-reference:{title:'Create gradient reference',fields:['matrix','nodes'],hint:'Provide the correct training-only mean connectome and frozen node TSV. LOSO construction is not automated.'},
-embed:{title:'Connectome → gradient coordinates',fields:['matrix','nodes','reference_run','connectome_run'],hint:'Provide the completed masked-connectome run to verify lineage. If omitted, the matrix is explicitly unverified.'},
-change:{title:'Longitudinal gradient change',fields:['first_run','second_run','nodes'],hint:'Both embedding runs must use identical reference, nodes and settings. No clinical interpretation is assigned.'},
-fingerprint:{title:'Decoded image fingerprint',fields:['image'],hint:'Detect voxel identity despite changed file compression/headers. Does not anonymize or establish scan identity.'}};
-const labels={dicom_dir:'DICOM series directory',reference:'b0 reference NIfTI',mask:'Binary electrode mask NIfTI',atlas:'Native atlas NIfTI',centerlines:'Reviewed centerlines JSON',config:'Prepared session JSON',matrix:'Compact connectome .npy',nodes:'Node mapping .tsv',reference_run:'Reference run directory',connectome_run:'Completed connectome run (optional; verifies mask lineage)',first_run:'First embedding run directory',second_run:'Second embedding run directory',image:'NIfTI image'};
-const $=id=>document.getElementById(id);let dataRoot='',browseTarget=null,currentDirectory='',currentReport=null;
-async function api(path,body){const r=await fetch(path,{method:body?'POST':'GET',headers:{Authorization:'Bearer '+token,...(body?{'Content-Type':'application/json'}:{})},...(body?{body:JSON.stringify(body)}:{})});const x=await r.json();if(!r.ok)throw Error(x.error||r.statusText);return x;}
-for(const [value,s]of Object.entries(stages)){const o=document.createElement('option');o.value=value;o.textContent=s.title;$('stage').append(o)}$('stage').value='qc';
-function fields(){const kind=$('stage').value,s=stages[kind];$('stageHint').textContent=s.hint;$('fields').replaceChildren();for(const name of s.fields){const label=document.createElement('label');label.textContent=labels[name];label.htmlFor='input-'+name;const row=document.createElement('div');row.className='inputrow';const input=document.createElement('input');input.type='text';input.name=name;input.id='input-'+name;input.required=name!=='connectome_run';input.placeholder='Select a local file or enter its path';const button=document.createElement('button');button.type='button';button.textContent='Browse';button.onclick=()=>openPicker(input,name.endsWith('_run')||name==='dicom_dir');row.append(input,button);$('fields').append(label,row)}$('resources').classList.toggle('hidden',kind!=='connectome');$('execution').classList.toggle('hidden',!['convert','connectome'].includes(kind));$('approval').classList.toggle('hidden',kind!=='approve');$('error').textContent='';}
-for(const name of ['registration','void_coverage','full_shaft','spurious_components','atlas_alignment']){const l=document.createElement('label');l.className='check';const i=document.createElement('input');i.type='checkbox';i.value=name;l.append(i,document.createTextNode(name.replaceAll('_',' ')));$('checks').append(l)}
-$('stage').onchange=fields;fields();
-$('jobForm').onsubmit=async e=>{e.preventDefault();$('error').textContent='';$('submit').disabled=true;try{const inputs={};$('fields').querySelectorAll('input').forEach(i=>inputs[i.name]=i.value);await api('/api/jobs',{stage:$('stage').value,inputs,threads:Number($('threads').value),execute:$('execute').checked,approve_compute:$('computeConsent').checked,reviewer:$('reviewer').value,checks:Array.from($('checks').querySelectorAll('input:checked')).map(i=>i.value)});await refresh()}catch(err){$('error').textContent=err.message}finally{$('submit').disabled=false}};
-function showWorkspace(){$('workspace').classList.remove('hidden');$('qcPane').classList.add('hidden');$('navWorkspace').classList.add('active');$('navQC').classList.remove('active')}
-function showReport(id){currentReport=id;$('workspace').classList.add('hidden');$('qcPane').classList.remove('hidden');$('navWorkspace').classList.remove('active');$('navQC').classList.add('active');$('qcFrame').src='/report?job='+encodeURIComponent(id)+'&token='+encodeURIComponent(token)}
-$('back').onclick=showWorkspace;$('navWorkspace').onclick=showWorkspace;$('navQC').onclick=()=>currentReport?showReport(currentReport):$('error').textContent='Run a QC job to create a report.';
-async function refresh(){try{const state=await api('/api/state');dataRoot=state.data_root;$('storage').textContent='Data root: '+state.data_root+' · Private run root: '+state.output_root;$('connection').textContent='Connected';
-const jobs=$('jobs'),openLogs=new Set(Array.from(jobs.querySelectorAll('details[open]')).map(d=>d.dataset.job));jobs.replaceChildren();jobs.className=state.jobs.length?'':'empty';if(!state.jobs.length)jobs.textContent='No jobs yet. Start with a synthetic QC report or a dry-run plan.';
-for(const j of state.jobs){const box=document.createElement('article');box.className='job';const head=document.createElement('div');head.className='jobhead';const title=document.createElement('h3');title.textContent=stages[j.stage]?.title||j.stage;const badge=document.createElement('span');badge.className='state '+j.status;badge.textContent=j.status==='planned'?'Plan ready · not executed':j.status;head.append(title,badge);const meta=document.createElement('div');meta.className='jobmeta';meta.textContent=`${j.elapsed_seconds.toFixed(1)} s · ${j.id.slice(0,8)}`;const step=document.createElement('div');step.className='step';step.textContent=j.current_step;box.append(head,meta,step);if(j.status==='running'){const p=document.createElement('div');p.className='pulse';box.append(p)}const buttons=document.createElement('div');buttons.className='rowbuttons';if(j.report){const b=document.createElement('button');b.textContent='Open mask QC';b.onclick=()=>showReport(j.id);buttons.append(b)}if(['queued','running'].includes(j.status)){const b=document.createElement('button');b.textContent='Cancel';b.onclick=async()=>{await api('/api/cancel',{id:j.id});refresh()};buttons.append(b)}box.append(buttons);const details=document.createElement('details');details.dataset.job=j.id;details.open=openLogs.has(j.id);const summary=document.createElement('summary');summary.textContent='Logs & output location';const pre=document.createElement('pre');pre.textContent=j.logs.join('\n')||'No output yet';const path=document.createElement('div');path.className='jobmeta';path.textContent=j.output_root;details.append(summary,pre,path);box.append(details);jobs.append(box)}}catch(err){$('connection').textContent='Disconnected';$('error').textContent=err.message}}
-async function browse(path){try{const result=await api('/api/browse?path='+encodeURIComponent(path||dataRoot));currentDirectory=result.path;$('browsePath').value=result.path;$('files').replaceChildren();$('browseError').textContent='';for(const entry of result.entries){const row=document.createElement('div');row.className='file';const n=document.createElement('span');n.textContent=(entry.directory?'▸ ':'')+entry.name;const button=document.createElement('button');button.textContent=entry.directory?'Open':'Select';button.onclick=()=>entry.directory?browse(entry.path):selectPath(entry.path);row.append(n,button);$('files').append(row)}}catch(err){$('browseError').textContent=err.message}}
-function openPicker(input,isDir){browseTarget=input;$('pickDir').classList.toggle('hidden',!isDir);$('picker').showModal();browse(dataRoot)}function selectPath(path){browseTarget.value=path;$('picker').close()}
+const stages={
+convert:{title:'Convert DICOM',group:'Import',fields:['dicom_dir'],hint:'Convert a selected DICOM series to NIfTI. Series identification and complete de-identification are not performed.'},
+mask:{title:'Create candidate mask',group:'Electrode mask',fields:['reference','centerlines'],hint:'Use reviewed centerlines already registered to the b0 image. This candidate tube does not reproduce the study’s void-follow mask.',method:[['Reference grid','2 mm isotropic'],['Tube radius','3.5 mm'],['Dilation','1 pass · 6-connected']]},
+qc:{title:'Review mask',group:'Electrode mask',fields:['reference','mask'],hint:'Display the b0 image and electrode mask in three grid-aligned planes. This operation does not approve the mask.'},
+approve:{title:'Record QC approval',group:'Electrode mask',fields:['reference','mask','atlas'],hint:'Confirm all five checks after inspecting the relevant images. Approval is bound to the exact image, mask and atlas hashes.'},
+connectome:{title:'Build connectome',group:'Connectome',fields:['config'],hint:'Requires prepared, registered inputs and a valid mask approval record.',method:[['Streamlines','Electrode exclusion'],['Weights','SIFT2 refit after exclusion'],['Assignment','Radial search · 4 mm'],['Matrix','Symmetric · Zero diagonal']]},
+reference:{title:'Create reference',group:'Gradients',fields:['matrix','nodes'],hint:'Supply a training-only or independent mean connectome and a fixed node table. LOSO reference construction is not automated.'},
+embed:{title:'Estimate gradients',group:'Gradients',fields:['matrix','nodes','reference_run','connectome_run'],hint:'Supply a completed connectome run to verify electrode-exclusion lineage. If omitted, matrix lineage is recorded as unverified.'},
+change:{title:'Measure longitudinal change',group:'Gradients',fields:['first_run','second_run','nodes'],hint:'Both visits must use the same reference, node definitions and embedding settings. The output does not assign clinical meaning to an axis.'},
+fingerprint:{title:'Image fingerprint',group:'Utilities',fields:['image'],hint:'Compare decoded voxel identity independent of file compression. A matching fingerprint does not establish patient or visit identity.'}
+};
+const gradientMethod=[['Embedding','Diffusion maps · Normalized angle'],['Connectivity','log1p · 75% row sparsity'],['Components','10 computed · G1–G4 retained'],['Parameters','α = 0.05 · t = 0'],['Hemispheres','Estimated separately']];
+stages.reference.method=gradientMethod;stages.embed.method=gradientMethod;
+const labels={dicom_dir:'DICOM series',reference:'b0 image',mask:'Electrode mask',atlas:'Native atlas',centerlines:'Reviewed centerlines',config:'Prepared session file',matrix:'Connectome matrix',nodes:'Node table',reference_run:'Gradient reference run',connectome_run:'Masked-connectome run¹',first_run:'First embedding run',second_run:'Second embedding run',image:'NIfTI image'};
+const checks={registration:'CT / anatomical MRI / DWI registration',void_coverage:'Signal-void coverage',full_shaft:'Full electrode-shaft coverage',spurious_components:'Spurious components excluded',atlas_alignment:'Native atlas alignment'};
+const $=id=>document.getElementById(id);let dataRoot='',browseTarget=null,currentDirectory='',currentReport=null,selectedJob=null,jobsState=[];
+const inputCache={};
+async function api(path,body){const response=await fetch(path,{method:body?'POST':'GET',headers:{Authorization:'Bearer '+token,...(body?{'Content-Type':'application/json'}:{})},...(body?{body:JSON.stringify(body)}:{})});const result=await response.json();if(!response.ok)throw Error(result.error||response.statusText);return result;}
+let group;
+for(const [value,step] of Object.entries(stages)){if(!group||group.label!==step.group){group=document.createElement('optgroup');group.label=step.group;$('stage').append(group)}const option=document.createElement('option');option.value=value;option.textContent=step.title;group.append(option)}
+$('stage').value='qc';
+function renderFields(){
+ const kind=$('stage').value,step=stages[kind];$('operationTitle').textContent=step.title;$('stageHint').textContent=step.hint;$('fields').replaceChildren();
+ for(const name of step.fields){const row=document.createElement('div');row.className='field';const label=document.createElement('label');label.textContent=labels[name];label.htmlFor='input-'+name;const controls=document.createElement('div');controls.className='inputrow';const input=document.createElement('input');input.type='text';input.name=name;input.id='input-'+name;input.required=name!=='connectome_run';input.value=inputCache[kind]?.[name]||'';input.oninput=()=>{inputCache[kind]??={};inputCache[kind][name]=input.value};const browse=document.createElement('button');browse.type='button';browse.textContent='Browse…';browse.setAttribute('aria-label','Browse '+labels[name]);browse.onclick=()=>openPicker(input,name.endsWith('_run')||name==='dicom_dir');controls.append(input,browse);row.append(label,controls);$('fields').append(row)}
+ if(kind==='embed'){const note=document.createElement('p');note.className='meta';note.textContent='¹ Optional. Without this run, electrode exclusion cannot be verified.';$('fields').append(note)}
+ $('method').replaceChildren();$('method').classList.toggle('hidden',!step.method);for(const [key,value]of step.method||[]){const dt=document.createElement('dt'),dd=document.createElement('dd');dt.textContent=key;dd.textContent=value;$('method').append(dt,dd)}
+ $('resources').classList.toggle('hidden',kind!=='connectome');$('execution').classList.toggle('hidden',!['convert','connectome'].includes(kind));$('approval').classList.toggle('hidden',kind!=='approve');$('error').textContent='';$('runHint').textContent=['convert','connectome'].includes(kind)?'Execution must be enabled explicitly. Otherwise only a plan is saved.':'Results are saved in a new run directory.';
+}
+for(const [name,text]of Object.entries(checks)){const label=document.createElement('label'),input=document.createElement('input');input.type='checkbox';input.value=name;label.append(input,document.createTextNode(' '+text));$('checks').append(label)}
+$('stage').onchange=()=>{$('execute').checked=false;$('computeConsent').checked=false;renderFields()};renderFields();
+$('jobForm').onsubmit=async event=>{event.preventDefault();$('error').textContent='';$('submit').disabled=true;try{const inputs={};$('fields').querySelectorAll('input').forEach(input=>inputs[input.name]=input.value);const result=await api('/api/jobs',{stage:$('stage').value,inputs,threads:Number($('threads').value),execute:$('execute').checked,approve_compute:$('computeConsent').checked,reviewer:$('reviewer').value,checks:Array.from($('checks').querySelectorAll('input:checked')).map(i=>i.value)});selectedJob=result.id;await refresh()}catch(error){$('error').textContent=error.message}finally{$('submit').disabled=false}};
+function showWorkspace(){$('workspace').classList.remove('hidden');$('qcPane').classList.add('hidden');$('navWorkspace').setAttribute('aria-selected','true');$('navQC').setAttribute('aria-selected','false')}
+function showReport(id){currentReport=id;$('workspace').classList.add('hidden');$('qcPane').classList.remove('hidden');$('navWorkspace').setAttribute('aria-selected','false');$('navQC').setAttribute('aria-selected','true');$('qcFrame').src='/report?job='+encodeURIComponent(id)+'&token='+encodeURIComponent(token)}
+$('back').onclick=showWorkspace;$('navWorkspace').onclick=showWorkspace;$('navQC').onclick=()=>{if(currentReport)showReport(currentReport)};
+for(const id of ['navWorkspace','navQC']){$(id).onkeydown=event=>{if(['ArrowLeft','ArrowRight','Home','End'].includes(event.key)){event.preventDefault();const target=(event.key==='Home'||id==='navQC')?$('navWorkspace'):$('navQC');if(!target.disabled){target.focus();target.click()}}};}
+function renderLog(){const job=jobsState.find(j=>j.id===selectedJob);$('jobLog').textContent=job?(job.logs.join('\n')||'No process output.'):'Select a job to inspect its log.';$('jobOutput').value=job?.output_root||'';$('currentStep').textContent=job?.current_step||'—';document.querySelectorAll('.job-row').forEach(row=>row.classList.toggle('selected',row.dataset.job===selectedJob))}
+function renderJobs(){
+ const target=$('jobs');target.replaceChildren();if(!jobsState.length){const row=target.insertRow(),cell=row.insertCell();cell.colSpan=4;cell.className='empty';cell.textContent='No jobs in this session';return}
+ for(const job of jobsState){const row=target.insertRow();row.className='job-row';row.dataset.job=job.id;const operation=row.insertCell(),button=document.createElement('button');button.className='job-name';button.textContent=stages[job.stage]?.title||job.stage;button.title=job.id;button.onclick=()=>{selectedJob=job.id;renderLog()};operation.append(button);const state=row.insertCell();state.className='state '+job.status;state.textContent=job.status==='planned'?'Plan only':job.status.charAt(0).toUpperCase()+job.status.slice(1);const elapsed=row.insertCell();elapsed.className='elapsed';elapsed.textContent=job.elapsed_seconds.toFixed(1)+' s';const actions=row.insertCell();
+  if(job.report){const review=document.createElement('button');review.textContent='Review';review.setAttribute('aria-label','Review mask from '+job.id.slice(0,8));review.onclick=()=>showReport(job.id);actions.append(review)}
+  if(['queued','running'].includes(job.status)){const cancel=document.createElement('button');cancel.textContent='Cancel';cancel.onclick=async()=>{try{await api('/api/cancel',{id:job.id});await refresh()}catch(error){$('error').textContent=error.message}};actions.append(cancel)}
+ }
+ renderLog();
+}
+async function refresh(){try{const state=await api('/api/state');dataRoot=state.data_root;$('dataRoot').value=state.data_root;$('runRoot').value=state.output_root;$('connection').textContent='Connected';$('connection').className='meta connected';jobsState=state.jobs;if(!selectedJob&&jobsState.length)selectedJob=jobsState[0].id;const report=jobsState.find(j=>j.report);if(!currentReport&&report)currentReport=report.id;$('navQC').disabled=!currentReport;const running=jobsState.filter(j=>j.status==='running').length,waiting=jobsState.filter(j=>j.status==='queued').length;$('queueSummary').textContent=jobsState.length?`${jobsState.length} job(s) · ${running} running · ${waiting} queued`:'No jobs';renderJobs()}catch(error){$('connection').textContent='Disconnected';$('connection').className='meta disconnected';$('error').textContent=error.message}}
+async function browse(path){try{const result=await api('/api/browse?path='+encodeURIComponent(path||dataRoot));currentDirectory=result.path;$('browsePath').value=result.path;$('files').replaceChildren();$('browseError').textContent='';for(const entry of result.entries){const row=document.createElement('div');row.className='file';const name=document.createElement('span');name.textContent=entry.name+(entry.directory?'/':'');const button=document.createElement('button');button.type='button';button.textContent=entry.directory?'Open':'Select';button.onclick=()=>entry.directory?browse(entry.path):selectPath(entry.path);row.append(name,button);$('files').append(row)}}catch(error){$('browseError').textContent=error.message}}
+function openPicker(input,isDirectory){browseTarget=input;$('pickDir').classList.toggle('hidden',!isDirectory);$('picker').showModal();browse(dataRoot)}
+function selectPath(path){browseTarget.value=path;browseTarget.dispatchEvent(new Event('input'));$('picker').close()}
 $('browseGo').onclick=()=>browse($('browsePath').value);$('pickDir').onclick=()=>selectPath(currentDirectory);$('closePicker').onclick=()=>$('picker').close();refresh();setInterval(refresh,3000);
-</script></body></html>
+</script>
+</body>
+</html>
