@@ -12,7 +12,7 @@ This is not an end-to-end validated DICOM pipeline or a clinical tool.
 | Electrode mask | Candidate from reviewed registered centerlines; reviewed mask union | Reproduce and generalize the study's void-follow algorithm |
 | Prepared-input connectome | Plans/executes exclusion → SIFT2 refit → matrix; explicit CPU choice | Complete fixture run, independent exclusion/weight audit |
 | Gradient G1–G4 | Reference-bound embedding and longitudinal change implemented | Automatic training-only/LOSO reference construction and study-level equivalence |
-| Distribution | MIT source; dependency/atlas licenses separate | macOS/Linux clean-install CI, containers, then validated release |
+| Distribution | MIT source; macOS/Linux Python install and synthetic-test CI passed | External-tool installations, containers, then validated release |
 
 ## Evidence obtained so far
 
@@ -22,6 +22,9 @@ This is not an end-to-end validated DICOM pipeline or a clinical tool.
 - A wheel was built and installed into a separate virtual environment using existing scientific
   dependencies; the CLI entry point and bundled GUI asset were verified outside the source checkout.
   This is a packaging smoke test, not a dependency-isolated clean installation.
+- GitHub-hosted macOS and Ubuntu runners subsequently installed the Python package and passed
+  the synthetic test suite: [initial CI run](https://github.com/taichisayanagi/Post_DBS_Connectome_analysis/actions/runs/34901769633).
+  This does not install or validate the external MRI reconstruction tools.
 - One synthetic gradient primitive was compared with the study implementation: matching aligned
   and unaligned coordinates and eigenvalues in that fixture. This is not full-study reproduction.
 - Synthetic MRtrix checks cover dilation geometry and exclusion of a densely sampled test track.
