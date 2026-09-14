@@ -42,6 +42,25 @@ def new_run(root, stage):
     return out
 
 
+def require_separate_output(output, input_directory):
+    """Never create run products inside a selected patient/source directory."""
+    output = Path(output).expanduser().resolve()
+    source = Path(input_directory).expanduser().resolve(strict=True)
+    if output == source or source in output.parents:
+        raise ValueError("Output must be outside the input/patient directory; original data are read-only")
+
+
+def freeze_inputs(paths):
+    """Record hashes before execution, without changing files, permissions or timestamps."""
+    return {str(Path(p).resolve(strict=True)): digest(p) for p in paths}
+
+
+def assert_inputs_unchanged(before):
+    changed = [p for p, expected in before.items() if not Path(p).is_file() or digest(p) != expected]
+    if changed:
+        raise ValueError("An input changed during processing; results cannot be accepted. Check the private input hash manifest.")
+
+
 def record(out, stage, inputs, parameters, outputs, status="completed"):
     versions = {}
     for name in ("numpy", "scipy", "nibabel", "brainspace"):

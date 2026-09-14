@@ -12,6 +12,12 @@ No patient data, brain images, private study matrices or third-party atlases are
 
 **[Current development progress and remaining milestones](docs/STATUS.md)**
 
+**New: [guided DICOM intake and reconstruction adapter](docs/DICOM_WORKFLOW.md).** The browser
+now inventories series, checks patient/visit selection, converts selected images and plans/runs
+acquisition-gated DWI/FOD processing and candidate rigid registration. The full DICOM-to-gradient
+route remains incomplete: automatic lead/mask/atlas/tractogram generation and real-data validation
+are still required.
+
 ## Installation model
 
 This is a lightweight GUI/workflow package that calls **software already installed on the user's
@@ -38,11 +44,10 @@ Installing these tools does not implement the reconstruction stages that are sti
 - Reference-bound longitudinal 4D parcel displacement and per-axis change.
 - Timestamped, non-overwriting private run folders, hashes and decoded voxel fingerprints.
 
-**Not implemented yet:** DICOM inventory/series adjudication; automatic CT lead localization;
-CT→T1/T2→b0 registration; the paper's b0 void-following algorithm and reviewed island repair;
-DWI preprocessing and acquisition-dependent FOD estimation; FreeSurfer/NextBrain atlas construction;
+**Not implemented yet:** automatic CT lead localization;
+the paper's b0 void-following algorithm and reviewed island repair; FreeSurfer/NextBrain atlas construction;
 ACT tractogram generation; longitudinal transform orchestration; cohort LOSO orchestration;
-CT/atlas/multi-session browser overlays; comprehensive environment checks and external end-to-end validation.
+CT/atlas/multi-session browser overlays; comprehensive dependency/resource validation and external end-to-end validation.
 
 The centerline tube is a candidate-mask utility, **not** a reproduction of the study's final void-follow
 mask. Its radius is not a universal artifact boundary. CT metal geometry and diffusion signal loss
@@ -76,7 +81,7 @@ The app binds only to `127.0.0.1`, restricts file selection to the configured da
 and requires a session token. Do not port-forward or expose it to the network. It is not a
 multi-user clinical system. Enter prepared input paths or use the local file browser.
 
-The GUI shows queued/running/planned/completed/failed/cancelled states, elapsed time,
+The GUI shows queued/running/planned/completed/needs_qc/failed/cancelled states, elapsed time,
 current MRtrix stage and log excerpts. Plan-only jobs are never marked as executed analyses.
 Long-running stages with no numeric progress report do not get a fabricated percentage.
 The GUI runs one job at a time. External execution requires an explicit consent checkbox;
@@ -85,8 +90,9 @@ Full tool logs are in the private run directory. Jobs are not resumed after serv
 For gradient jobs, the optional completed-connectome run field enables hash verification of
 the matrix's electrode-exclusion lineage; omitting it is explicitly recorded as unverified.
 
-Registration, preprocessing and atlas/tractogram generation are visibly marked as unimplemented.
-The GUI is a front end to the prototype, not evidence that these missing operations work.
+Use the DICOM workflow tab for the implemented import/preprocessing/rigid-registration adapter.
+Atlas, electrode localization/void-following and tractogram generation remain external steps.
+The GUI is not evidence of complete or validated DICOM reconstruction.
 
 ### Prepared-input connectome
 

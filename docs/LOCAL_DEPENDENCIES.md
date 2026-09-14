@@ -26,9 +26,10 @@ the dependency changes; prefer an environment dedicated to this application.
 
 ## Required tools depend on the selected operation
 
-Currently, DICOM conversion invokes dcm2niix. Prepared-input connectome execution invokes MRtrix3,
-and gradient/QC operations use the Python dependencies declared in `pyproject.toml`.
-FSL, FreeSurfer, NextBrain, MATLAB, SPM12 and other study tools will be connected as the corresponding
+Currently, DICOM inventory uses pydicom and conversion invokes dcm2niix. The new reconstruction
+adapter calls MRtrix3, FSL eddy (optional topup) and ANTs. Prepared-input connectome execution invokes
+MRtrix3, and gradient/QC operations use the Python dependencies declared in `pyproject.toml`.
+FreeSurfer, NextBrain, MATLAB, SPM12 and other study tools will be connected as the corresponding
 reconstruction stages are implemented and verified. Installation alone does **not** make those
 currently missing stages operational. Gradient-only analysis should not require MATLAB or FreeSurfer.
 
@@ -36,7 +37,12 @@ Before implementing each upstream route, derive its exact dependency inventory f
 scripts and execution records. Record required commands, MATLAB functions/toolboxes, models,
 atlas resources and supported versions. Do not infer compatibility merely from a product name.
 
-## Planned environment checker (not implemented yet)
+## Environment discovery and remaining checks
+
+The GUI now offers read-only command discovery. It checks PATH, then explicitly configured
+`FSLDIR`, `FREESURFER_HOME`, `MRTRIX_HOME` and `ANTSPATH` directories. It labels available commands
+as **detected, not tested**. No program, MATLAB license checkout or package installation is triggered.
+Paths/versions/hashes are additionally recorded when a processing command is explicitly executed.
 
 The GUI will offer an environment-settings panel with explicit installation paths and a CLI
 equivalent. Detection should be non-mutating: explicit paths first, then documented environment
@@ -73,5 +79,6 @@ FSL，MRtrix3，FreeSurfer，NextBrain，MATLAB，SPM12，Python本体，atlas�
 Docker等の大容量コンテナも必須にしない．
 
 ただし「インストール済み」と「検証済みの組合せで実行可能」は異なる．
-必要なバージョン，実行パス，追加資源，ライセンス設定を段階的に確認できる環境チェックを今後実装する．
+PATHと設定済みインストール先を読み取るGUIの検出機能を実装した．
+追加資源，ライセンス設定，実行互換性の検査は今後の課題である．
 使用する工程に不要な依存ソフトまで必須にせず，既存環境を断りなく変更しない．

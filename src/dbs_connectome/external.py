@@ -8,8 +8,9 @@ import nibabel as nib
 import numpy as np
 
 from .gradients import load_nodes
+from .environment import command_environment
 from .masks import require_approval
-from .provenance import image3d, read_json, same_grid, write_json
+from .provenance import digest, image3d, read_json, same_grid, write_json
 
 
 def check_threads(threads):
@@ -113,18 +114,33 @@ def validate_tractogram_sampling(path, reference):
 def execute(commands, out, threads=None):
     if threads is not None:
         check_threads(threads)
-    missing = sorted({cmd[0] for cmd in commands if shutil.which(cmd[0]) is None})
+    env = command_environment(threads or 1)
+    missing = sorted({cmd[0] for cmd in commands if shutil.which(cmd[0], path=env["PATH"]) is None})
     if missing:
         raise ValueError("Missing external tools: " + ", ".join(missing))
     versions = {}
     for name in sorted({cmd[0] for cmd in commands}):
+        executable = shutil.which(name, path=env["PATH"])
+        if name.startswith("ants"):
+            versions[name] = {"path": executable, "sha256": digest(executable), "version": "not_queried"}
+            continue
         flag = "--version" if name == "dcm2niix" else "-version"
-        version = subprocess.run([name, flag], capture_output=True, text=True, timeout=30)
-        versions[name] = {"returncode": version.returncode, "text": (version.stdout + version.stderr).strip()}
+        version = subprocess.run([executable, flag], capture_output=True, text=True, timeout=30, env=env)
+        versions[name] = {"path": executable, "sha256": digest(executable), "returncode": version.returncode,
+                          "text": (version.stdout + version.stderr).strip()}
     write_json(Path(out) / "external_versions.json", versions)
     for i, command in enumerate(commands):
         print(f"[step {i+1}/{len(commands)}] Running {command[0]}", flush=True)
         # stdout/stderr can contain PHI. They stay in the private run directory.
-        with (Path(out) / f"command_{i:02d}.log").open("xb") as log:
-            subprocess.run(command, shell=False, check=True, stdout=log, stderr=subprocess.STDOUT)
+        actual = [versions[command[0]]["path"], *command[1:]]
+        with (Path(out) / f"command_{i:02d}.log").open("x", encoding="utf-8") as log:
+            with subprocess.Popen(actual, shell=False, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                                  text=True, errors="replace", env=env) as process:
+                for line in process.stdout:
+                    log.write(line)
+                    log.flush()
+                    print(line.rstrip(), flush=True)
+                process.stdout.close()
+                if process.wait():
+                    raise subprocess.CalledProcessError(process.returncode, actual)
         print(f"[step {i+1}/{len(commands)}] Completed {command[0]}", flush=True)

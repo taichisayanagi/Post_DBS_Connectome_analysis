@@ -34,7 +34,7 @@ class GuiSurfaceTests(unittest.TestCase):
 
     def test_every_backend_stage_and_input_is_exposed(self):
         for stage, required in FIELDS.items():
-            entry = re.search(r"^" + stage + r":\{[^\n]+", self.html, re.MULTILINE)
+            entry = re.search(r"^'?" + re.escape(stage) + r"'?:\{[^\n]+", self.html, re.MULTILINE)
             self.assertIsNotNone(entry, stage)
             for name in required:
                 self.assertIn("'" + name + "'", entry.group(0))

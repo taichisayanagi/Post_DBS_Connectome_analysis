@@ -17,9 +17,11 @@ from urllib.parse import parse_qs, urlparse
 import uuid
 
 from .masks import REVIEW_ITEMS
-from .provenance import new_run, read_json, write_json
+from .provenance import new_run, read_json, require_separate_output, write_json
 
 FIELDS = {
+    "environment": [], "inventory": ["dicom_dir"], "import-session": ["inventory_run"],
+    "reconstruct": ["import_run"],
     "convert": ["dicom_dir"], "mask": ["reference", "centerlines"], "qc": ["reference", "mask"],
     "approve": ["reference", "mask", "atlas"], "connectome": ["config"],
     "reference": ["matrix", "nodes"], "embed": ["matrix", "nodes", "reference_run"],
@@ -32,6 +34,7 @@ class JobManager:
         self.data_root = Path(data_root).expanduser().resolve(strict=True)
         if not self.data_root.is_dir():
             raise ValueError("Data root must be a directory")
+        require_separate_output(output_root, self.data_root)
         self.root = new_run(output_root, "gui_session")
         self.jobs = {}
         self.lock = threading.RLock()
@@ -50,7 +53,7 @@ class JobManager:
     def arguments(self, body, job_root):
         stage = body.get("stage")
         if stage not in FIELDS:
-            raise ValueError("Unsupported stage; registration/preprocessing are not implemented yet")
+            raise ValueError("Unsupported processing stage")
         supplied = body.get("inputs", {})
         if not isinstance(supplied, dict):
             raise ValueError("Inputs must be an object")
@@ -60,7 +63,7 @@ class JobManager:
             if not isinstance(value, str) or not value.strip():
                 raise ValueError("Missing input: " + field)
             path = self.resolve_input(value)
-            is_directory = field in ("dicom_dir", "reference_run", "first_run", "second_run")
+            is_directory = field in ("dicom_dir", "reference_run", "first_run", "second_run", "inventory_run", "import_run")
             if path.is_dir() != is_directory:
                 raise ValueError("Wrong file/directory type: " + field)
             args += ["--" + field.replace("_", "-"), str(path)]
@@ -69,6 +72,30 @@ class JobManager:
             if not lineage.is_dir():
                 raise ValueError("Connectome run must be a directory")
             args += ["--connectome-run", str(lineage)]
+        if stage == "import-session":
+            from .intake import validate_selection
+            selection = body.get("selection")
+            if not isinstance(selection, dict):
+                raise ValueError("Select and review DICOM series in the DICOM workflow tab")
+            inventory_run = self.resolve_input(supplied["inventory_run"])
+            # Inventory paths are also constrained to the GUI roots, not just the selected file.
+            report = read_json(inventory_run / "inventory.json")
+            self.resolve_input(report["source_root"])
+            for series in report["series"]:
+                for item in series["files"]:
+                    self.resolve_input(item["path"])
+            validate_selection(inventory_run, selection)
+            args += ["--selection", str(job_root / "selection_input.json")]
+        if stage == "reconstruct":
+            from .reconstruction import selected_artifacts
+            choices = body.get("choices")
+            if not isinstance(choices, dict):
+                raise ValueError("Review converted inputs and acquisition choices in the DICOM workflow tab")
+            artifacts = selected_artifacts(self.resolve_input(supplied["import_run"]), choices)
+            for artifact in artifacts.values():
+                for path in artifact["hashes"]:
+                    self.resolve_input(path)
+            args += ["--choices", str(job_root / "choices_input.json")]
         if stage == "connectome":
             config_path = self.resolve_input(supplied["config"])
             config = read_json(config_path)
@@ -76,11 +103,12 @@ class JobManager:
                 if not isinstance(value, str):
                     raise ValueError("Prepared config paths must be strings")
                 self.resolve_input(config_path.parent / value)
+        if stage in ("connectome", "reconstruct"):
             threads = body.get("threads")
             if not isinstance(threads, int) or isinstance(threads, bool) or not 1 <= threads <= 128:
                 raise ValueError("Select an explicit thread count between 1 and 128")
             args += ["--threads", str(threads)]
-        if stage in ("convert", "connectome") and body.get("execute"):
+        if stage in ("convert", "connectome", "import-session", "reconstruct") and body.get("execute"):
             if body.get("approve_compute") is not True:
                 raise ValueError("Explicit confirmation is required to execute external image-processing tools")
             args.append("--execute")
@@ -100,9 +128,14 @@ class JobManager:
             job_root = self.root / identifier
             arguments = self.arguments(body, job_root)
             job_root.mkdir(mode=0o700)
+            if body["stage"] == "import-session":
+                write_json(job_root / "selection_input.json", body["selection"])
+            if body["stage"] == "reconstruct":
+                write_json(job_root / "choices_input.json", body["choices"])
             job = {"id": identifier, "stage": body["stage"], "status": "queued", "logs": [],
                    "created": time.time(), "started": None, "ended": None, "process": None,
-                   "output_root": str(job_root), "report": None, "current_step": "Waiting for worker"}
+                   "output_root": str(job_root), "report": None, "result_run": None,
+                   "current_step": "Waiting for worker"}
             self.jobs[identifier] = job
             write_json(job_root / "request.json", {"arguments": arguments, "utc": datetime.now(timezone.utc).isoformat()})
             self.pool.submit(self._run, identifier, arguments)
@@ -112,7 +145,6 @@ class JobManager:
         job = self.jobs[identifier]
         with self.lock:
             if job["status"] == "cancelled":
-                write_json(Path(job["output_root"]) / "job_result.json", self.snapshot(job))
                 return
             job.update(status="running", started=time.time(), current_step="Validating inputs / executing selected stage")
         try:
@@ -142,11 +174,15 @@ class JobManager:
                     job["status"] = "completed" if code == 0 else "failed"
                 if job["status"] == "completed":
                     provs = list(Path(job["output_root"]).glob("*/provenance.json"))
+                    if provs:
+                        job["result_run"] = str(provs[0].parent)
                     if provs and read_json(provs[0])["status"] == "planned_not_executed":
                         job["status"] = "planned"
                     reports = list(Path(job["output_root"]).glob("*/mask_review.html"))
                     if reports:
                         job["report"] = str(reports[0])
+                    if job["stage"] == "reconstruct" and job["status"] == "completed":
+                        job["status"] = "needs_qc"
                 job["returncode"] = code
         except Exception as exc:
             with self.lock:
@@ -157,7 +193,14 @@ class JobManager:
                 job["ended"] = time.time()
                 job["process"] = None
                 job["current_step"] = job["status"]
-                write_json(Path(job["output_root"]) / "job_result.json", self.snapshot(job))
+                self.save_result(job)
+
+    def save_result(self, job):
+        # Mutable job state is separate from immutable scientific provenance.
+        target = Path(job["output_root"]) / "job_result.json"
+        temporary = target.with_name(".job_result_" + uuid.uuid4().hex + ".json")
+        write_json(temporary, self.snapshot(job))
+        temporary.replace(target)
 
     def snapshot(self, job):
         public = {k: v for k, v in job.items() if k != "process"}
@@ -182,7 +225,7 @@ class JobManager:
                     os.killpg(job["process"].pid, signal.SIGTERM)
                 except ProcessLookupError:
                     pass
-            write_json(Path(job["output_root"]) / "job_result.json", self.snapshot(job))
+            self.save_result(job)
 
 
 def make_handler(manager, token):
@@ -191,12 +234,17 @@ def make_handler(manager, token):
             # Never print the token-bearing URL or patient paths to the console.
             pass
 
-        def authorized(self):
+        def local_origin(self):
             expected_host = f"127.0.0.1:{self.server.server_port}"
             if self.headers.get("Host") != expected_host:
                 return False
             origin = self.headers.get("Origin")
             if origin and origin != "http://" + expected_host:
+                return False
+            return True
+
+        def authorized(self):
+            if not self.local_origin():
                 return False
             query_token = parse_qs(urlparse(self.path).query).get("token", [""])[0]
             header_token = self.headers.get("Authorization", "").removeprefix("Bearer ")
@@ -217,14 +265,30 @@ def make_handler(manager, token):
             self.wfile.write(data)
 
         def do_GET(self):
+            path = urlparse(self.path).path
+            # The static shell contains no data or token. Reload uses the browser's
+            # sessionStorage token for API requests; all data endpoints remain authenticated.
+            if path == "/" and self.local_origin():
+                return self.send(200, (Path(__file__).parent / "static/index.html").read_bytes(), "text/html")
             if not self.authorized():
                 return self.send(403, {"error": "Local access token required"})
-            path = urlparse(self.path).path
             try:
-                if path == "/":
-                    return self.send(200, (Path(__file__).parent / "static/index.html").read_bytes(), "text/html")
                 if path == "/api/state":
                     return self.send(200, manager.state())
+                if path == "/api/result":
+                    identifier = parse_qs(urlparse(self.path).query).get("job", [""])[0]
+                    job = manager.jobs.get(identifier)
+                    names = {"inventory": "inventory.json", "import-session": "converted.json",
+                             "environment": "environment.json", "reconstruct": "reconstruction.json"}
+                    if not job or job["status"] not in ("completed", "needs_qc") or job["stage"] not in names:
+                        raise ValueError("No completed workflow result for this job")
+                    result = read_json(Path(job["result_run"]) / names[job["stage"]])
+                    if job["stage"] == "inventory":
+                        result = {**result, "rejected_count": len(result["rejected"]),
+                                  "series": [{k: v for k, v in s.items() if k not in ("files", "series_uid", "study_uid")}
+                                             | {"file_count": len(s["files"])} for s in result["series"]]}
+                        result.pop("rejected")
+                    return self.send(200, {"run": job["result_run"], "result": result})
                 if path == "/api/browse":
                     relative = parse_qs(urlparse(self.path).query).get("path", [str(manager.data_root)])[0]
                     directory = manager.resolve_input(relative)
@@ -286,5 +350,4 @@ def serve(data_root, output_root, port=8765):
             if job["status"] in ("queued", "running"):
                 manager.cancel(identifier)
         manager.pool.shutdown(wait=False, cancel_futures=True)
-        server.server_close()
         server.server_close()

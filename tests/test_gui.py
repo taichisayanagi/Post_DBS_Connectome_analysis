@@ -45,6 +45,12 @@ class GuiTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.manager.arguments({"stage": "shell", "inputs": {}}, self.root)
 
+    def test_output_cannot_be_created_in_patient_source(self):
+        target = self.data / "forbidden_outputs"
+        with self.assertRaisesRegex(ValueError, "read-only"):
+            JobManager(self.data, target)
+        self.assertFalse(target.exists())
+
     def test_optional_mask_lineage_is_forwarded(self):
         matrix = self.data / "matrix.npy"
         nodes = self.data / "nodes.tsv"
@@ -96,6 +102,11 @@ class GuiTests(unittest.TestCase):
             with self.assertRaises(HTTPError) as error:
                 urlopen(base + "/api/state", timeout=2)
             self.assertEqual(error.exception.code, 403)
+            # The reloadable static shell has no patient content; data APIs still require a token.
+            with urlopen(base + "/", timeout=2) as response:
+                html = response.read().decode()
+                self.assertIn("DICOM workflow", html)
+                self.assertNotIn(str(self.data), html)
             request = Request(base + "/api/state", headers={"Authorization": "Bearer synthetic-token"})
             with urlopen(request, timeout=2) as response:
                 self.assertEqual(json.load(response)["version"], "0.1.0.dev0")
@@ -107,6 +118,24 @@ class GuiTests(unittest.TestCase):
             server.shutdown()
             server.server_close()
             thread.join()
+
+    def test_inventory_job_result_available(self):
+        identifier = self.manager.submit({"stage": "environment", "inputs": {}})
+        deadline = time.monotonic() + 15
+        while self.manager.jobs[identifier]["status"] in ("queued", "running") and time.monotonic() < deadline:
+            time.sleep(.02)
+        job = self.manager.jobs[identifier]
+        self.assertEqual(job["status"], "completed", job["logs"])
+        self.assertTrue((Path(job["result_run"]) / "environment.json").exists())
+
+    def test_mutable_job_state_does_not_overwrite_provenance(self):
+        job_root = self.manager.root / "synthetic_job"
+        job_root.mkdir()
+        job = {"output_root": str(job_root), "status": "cancelled", "created": 1,
+               "started": 2, "ended": 3, "process": None}
+        self.manager.save_result(job)
+        self.manager.save_result(job)
+        self.assertEqual(json.loads((job_root / "job_result.json").read_text())["status"], "cancelled")
 
 
 if __name__ == "__main__":

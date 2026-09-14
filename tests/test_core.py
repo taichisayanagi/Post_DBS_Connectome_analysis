@@ -270,16 +270,18 @@ class ProvenanceTests(SyntheticFixture):
         self.assertTrue(all(x[-2:] == ["-nthreads", "8"] for x in commands))
 
     def test_fail_fast_external_executor(self):
-        calls = []
-        def fake(command, **kwargs):
-            calls.append(command)
-            if command[-1] == "-version":
-                return subprocess.CompletedProcess(command, 0, "fake 1.0", "")
-            raise subprocess.CalledProcessError(2, command)
-        with patch("dbs_connectome.external.shutil.which", return_value="/fake"), patch("dbs_connectome.external.subprocess.run", side_effect=fake):
+        with patch("dbs_connectome.external.shutil.which", return_value="/fake"), \
+             patch("dbs_connectome.external.digest", return_value="synthetic-hash"), \
+             patch("dbs_connectome.external.subprocess.run", return_value=subprocess.CompletedProcess([], 0, "fake 1.0", "")), \
+             patch("dbs_connectome.external.subprocess.Popen") as launch:
+            process = launch.return_value.__enter__.return_value
+            process.stdout.__iter__.return_value = iter(["synthetic failure\n"])
+            process.wait.return_value = 2
+            process.returncode = 2
             with self.assertRaises(subprocess.CalledProcessError):
                 execute([["stage1", "input"], ["stage2", "output"]], self.root, 8)
-        self.assertNotIn(["stage2", "output"], calls)
+            self.assertEqual(launch.call_count, 1)
+            self.assertEqual(launch.call_args.args[0], ["/fake", "input"])
 
     def test_mif_header_validation(self):
         reference = self.image("reference.nii.gz")

@@ -9,7 +9,7 @@ import numpy as np
 from .external import connectome_plan, conversion_plan, execute, validate_mif_grid, validate_tractogram_sampling
 from .gradients import compact_raw, displacement, geometry, hemisphere_embeddings, load_nodes, settings_dict
 from .masks import REVIEW_ITEMS, approval_record, create_candidate, union_registered
-from .provenance import digest, new_run, read_json, record, voxel_fingerprint, write_json
+from .provenance import digest, new_run, read_json, record, require_separate_output, voxel_fingerprint, write_json
 from .qc import browser_report
 
 
@@ -21,10 +21,23 @@ def parser():
     gui.add_argument("--data-root", required=True)
     gui.add_argument("--output-root", required=True)
     gui.add_argument("--port", type=int, default=8765)
-    for name in ("convert", "mask", "union", "approve", "connectome", "reference", "embed", "change", "fingerprint", "qc"):
+    for name in ("environment", "inventory", "import-session", "reconstruct", "convert", "mask", "union", "approve", "connectome", "reference", "embed", "change", "fingerprint", "qc"):
         s = sub.add_parser(name)
         s.add_argument("--output-root", required=True, help="Private result root outside source checkout")
-        if name == "qc":
+        if name == "environment":
+            pass
+        elif name == "inventory":
+            s.add_argument("--dicom-dir", required=True)
+        elif name == "import-session":
+            s.add_argument("--inventory-run", required=True)
+            s.add_argument("--selection", required=True)
+            s.add_argument("--execute", action="store_true")
+        elif name == "reconstruct":
+            s.add_argument("--import-run", required=True)
+            s.add_argument("--choices", required=True)
+            s.add_argument("--threads", type=int, required=True)
+            s.add_argument("--execute", action="store_true")
+        elif name == "qc":
             s.add_argument("--reference", required=True)
             s.add_argument("--mask", required=True)
         elif name == "convert":
@@ -76,7 +89,24 @@ def checked_artifact(run, filename, stage):
 def run(args, out):
     command = args.command
     inputs, outputs, parameters, status = [], [], {}, "completed"
-    if command == "qc":
+    if command == "inventory":
+        from .intake import inventory
+        inventory(args.dicom_dir, out)
+        return
+    elif command == "import-session":
+        from .intake import convert_selection
+        convert_selection(args.inventory_run, read_json(args.selection), out, args.execute)
+        return
+    elif command == "reconstruct":
+        from .reconstruction import reconstruct
+        reconstruct(args.import_run, read_json(args.choices), out, args.threads, args.execute)
+        return
+    elif command == "environment":
+        from .environment import discover
+        path = out / "environment.json"
+        write_json(path, discover())
+        outputs = [path]
+    elif command == "qc":
         path = out / "mask_review.html"
         qc = browser_report(args.reference, args.mask, path)
         inputs, outputs = [args.reference, args.mask], [path]
@@ -196,6 +226,12 @@ def main(argv=None):
             from .gui import serve
             serve(args.data_root, args.output_root, args.port)
             return 0
+        for name in ("dicom_dir", "inventory_run", "import_run", "reference_run", "connectome_run", "first_run", "second_run"):
+            source = getattr(args, name, None)
+            if source:
+                require_separate_output(args.output_root, source)
+        if args.command == "import-session":
+            require_separate_output(args.output_root, read_json(Path(args.inventory_run) / "inventory.json")["source_root"])
         out = new_run(args.output_root, args.command)
         run(args, out)
     except Exception as error:
