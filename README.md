@@ -35,7 +35,8 @@ The installed tools, atlas resources and acquisition parameters must be configur
   nearest-neighbor atlas transfer and normalized five-tissue ACT images.
 - Automatic elongated CT-metal candidates or reviewed RAS centerlines; ambiguous detections stop.
 - QC-gated automatic handoff into ACT tractography, exclusion, SIFT2 and gradients.
-- Independent continuous streamline-segment / mask-voxel intersection audit before SIFT2.
+- Continuous segment/voxel exclusion beyond MRtrix's sampled lookup, followed by a reread audit before SIFT2.
+- SIFT2 weight-count, finite/nonnegative-weight and positive-mu checks before matrix construction.
 - Candidate masks from **already registered, reviewed** electrode centerlines in NIfTI RAS+ millimetres.
 - Study-style 6-connected dilation with an explicit 2-mm-grid check.
 - Union of already anatomically registered masks with a hash-bound registration-review record.

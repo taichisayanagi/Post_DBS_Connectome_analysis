@@ -35,7 +35,8 @@ must support their `--nthr` option. The local topup help was checked for that op
 4. Human image QC: inspect registration, full-shaft signal void, spurious components and atlas alignment.
    Approval binds the exact reference, mask and atlas hashes. It is never generated automatically.
 5. `finish-session`: gray–white-interface seeded iFOD2 ACT tractography, mask exclusion,
-   independent segment/voxel exclusion audit, SIFT2 refit, endpoint assignment and hemisphere G1–G4.
+   continuous segment/voxel exclusion and reread audit, SIFT2 refit, weight checks, endpoint
+   assignment and hemisphere G1–G4.
 
 The default streamline request is 1,000,000, FOD cutoff 0.06, integration step 0.5 mm and
 downsampling factor 1. These generalized settings are explicit and **not** a bit-equivalent
@@ -79,9 +80,20 @@ If candidates are ambiguous, supply reviewed centerlines or use the Advanced pre
 workflow with a separately validated mask. Longitudinal work needs registered union masks;
 the existing union operation accepts already registered masks with a hash-bound registration
 attestation. Automatic longitudinal registration and mask-union orchestration remain unimplemented.
-The continuous exclusion audit verifies the geometric mask that was supplied, not whether that
-mask adequately covers susceptibility artifacts. A surviving segment intersection aborts before
-weighting/matrix creation rather than being ignored.
+After MRtrix exclusion, a continuous segment/closed-voxel-box filter removes entire streamlines
+that still intersect the mask between sampled vertices. Retained vertices and their order are
+not changed. The final tractogram is reread using the same predicate before SIFT2 is fitted.
+This predicate is independent of MRtrix's sampled mask lookup; the filter and reread audit are
+not two independent algorithms. Any remaining intersection, sparse/invalid geometry or empty
+tractogram aborts the run. These checks validate only the supplied geometric mask, not its
+coverage of susceptibility artifacts. The stricter exclusion is not established as equivalent
+to the study pipeline.
+
+`strict_exclusion.json` records additional removals and `exclusion_audit.json` the final count.
+`sift2_audit.json` records the weight count, sum, zero-weight count, mu and file hashes.
+Weight count must match the final tractogram; weights must be finite, nonnegative and not all
+zero; mu must be finite and positive. The matrix uses the fitted SIFT2 weights **without**
+additional mu scaling. Mu is retained for explicit downstream analysis, not silently applied.
 
 ## Validation boundaries
 
@@ -89,8 +101,16 @@ The local synthetic suite covers input safety, label mapping, tissue normalizati
 ambiguity, between-vertex mask crossings and artifact handoff through gradient estimation.
 The full continuation integration test **mocks external MRI tools** while running the independent
 mask audit and gradient routines; it tests wiring, not biological validity or tool interoperability.
-A real NIfTI intake smoke test verified copies and unchanged source bytes/mtime/permissions;
-it did not run the heavy MRI chain. No independent full raw-image-to-gradient validation or
+The separate opt-in `examples/verify_installed_mrtrix.py` runs real MRtrix exclusion, SIFT2 and
+matrix construction plus BrainSpace on artificial prepared data. It takes no patient input,
+creates no human approval and uses one thread. Run it only with a new output root outside the
+source checkout. This tests downstream numerical interoperability, not ACT generation or MRI
+reconstruction; its isotropic synthetic FOD is not a biological model.
+A subsequent single local postoperative NIfTI run completed diffusion preprocessing, WM/CSF
+FOD estimation and T1-to-DWI rigid registration using installed MRI tools. Source hashes,
+modification times and permissions were unchanged; numerical geometry checks and selected
+registration views were reviewed. Anatomical segmentation and the full downstream patient
+chain are not yet validated. No independent full raw-image-to-gradient validation or
 complete manuscript replay has been performed. Do not cite this package as having generated
 the reported clinical results or as a validated biomarker implementation.
 

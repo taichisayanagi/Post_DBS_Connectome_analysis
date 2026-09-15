@@ -122,9 +122,12 @@ class GuiTests(unittest.TestCase):
     def test_inventory_job_result_available(self):
         identifier = self.manager.submit({"stage": "environment", "inputs": {}})
         deadline = time.monotonic() + 15
-        while self.manager.jobs[identifier]["status"] in ("queued", "running") and time.monotonic() < deadline:
+        # Read the same locked snapshot as the HTTP client, not an in-flight dict.
+        job = self.manager.state()["jobs"][0]
+        while job["status"] in ("queued", "running") and time.monotonic() < deadline:
             time.sleep(.02)
-        job = self.manager.jobs[identifier]
+            job = self.manager.state()["jobs"][0]
+        self.assertEqual(job["id"], identifier)
         self.assertEqual(job["status"], "completed", job["logs"])
         self.assertTrue((Path(job["result_run"]) / "environment.json").exists())
 

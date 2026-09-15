@@ -6,7 +6,7 @@ import sys
 
 import numpy as np
 
-from .external import audit_mask_exclusion, connectome_plan, conversion_plan, execute, validate_mif_grid, validate_tractogram_sampling
+from .external import audit_mask_exclusion, connectome_plan, conversion_plan, execute, filter_segment_crossings, validate_mif_grid, validate_tractogram_sampling, validate_sift2_weights
 from .gradients import compact_raw, displacement, geometry, hemisphere_embeddings, load_nodes, settings_dict
 from .masks import REVIEW_ITEMS, approval_record, create_candidate, union_registered
 from .provenance import assert_inputs_unchanged, digest, freeze_inputs, new_run, read_json, record, require_separate_output, voxel_fingerprint, write_json
@@ -170,6 +170,8 @@ def run(args, out):
         paths, commands = connectome_plan(args.config, out, args.threads)
         write_json(out / "plan.json", commands)
         parameters = {"threads": args.threads, "sift2_refitted_after_exclusion": True,
+                      "strict_segment_filter_before_sift2": True,
+                      "matrix_weight_convention": "SIFT2_weights_without_mu_scaling",
                       "assignment_radial_search_mm": 4, "matrix_row_zero": "atlas_label_1",
                       "nodes_sha256": digest(paths["nodes"])}
         inputs = [args.config, *paths.values()]
@@ -180,12 +182,20 @@ def run(args, out):
             validate_mif_grid(paths["five_tissue"], paths["reference"], out)
             sampling = validate_tractogram_sampling(paths["tractogram"], paths["reference"])
             write_json(out / "tractogram_sampling.json", sampling)
-            for directory in ("exclusion_commands", "connectome_commands"):
+            for directory in ("exclusion_commands", "sift2_commands", "connectome_commands"):
                 (out / directory).mkdir()
             execute(commands[:1], out / "exclusion_commands", args.threads)
+            print("[step strict-mask] Removing residual between-vertex mask intersections", flush=True)
+            filtered = filter_segment_crossings(out / "tracks_mrtrix_excluded.tck", paths["mask"], out / "tracks_excluded.tck")
+            write_json(out / "strict_exclusion.json", filtered)
+            print(f"[step strict-mask] Retained {filtered['retained_streamlines']}; additionally removed {filtered['additional_removed']}; rereading final tractogram", flush=True)
             audit = audit_mask_exclusion(out / "tracks_excluded.tck", paths["mask"])
             write_json(out / "exclusion_audit.json", audit)
-            execute(commands[1:], out / "connectome_commands", args.threads)
+            execute(commands[1:2], out / "sift2_commands", args.threads)
+            print("[step SIFT2-audit] Checking weights against the final tractogram", flush=True)
+            weights = validate_sift2_weights(out / "sift2_weights.txt", out / "sift2_mu.txt", audit["retained_streamlines"])
+            write_json(out / "sift2_audit.json", weights)
+            execute(commands[2:], out / "connectome_commands", args.threads)
             nodes = load_nodes(paths["nodes"])
             raw = np.loadtxt(out / "connectome_raw.csv", delimiter=",")
             compact = compact_raw(raw, [int(n["label"]) for n in nodes])

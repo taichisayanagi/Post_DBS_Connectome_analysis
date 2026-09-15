@@ -148,7 +148,8 @@ def finish_session(prepared_run, approval, out, threads, streamlines=1000000, re
     config = {**paths, "tractogram": str(tracks), "approval": str(Path(approval).resolve())}
     write_json(out / "connectome_config.json", config)
     write_json(out / "plan.json", {"tractography": commands,
-        "then": ["tckedit electrode exclusion", "SIFT2 refit", "tck2connectome", "hemisphere G1-G4"],
+        "then": ["tckedit electrode exclusion", "strict continuous-segment exclusion and reread audit",
+                 "SIFT2 refit", "weight-count and mu audit", "tck2connectome", "hemisphere G1-G4"],
         "reference_run": str(reference_run) if reference_run else None,
         "warning": "No reference supplied: single-session unaligned embedding only" if not reference_run else None})
     if not execute_tools:

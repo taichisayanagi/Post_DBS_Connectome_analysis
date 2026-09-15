@@ -52,7 +52,7 @@ def connectome_plan(config_path, out, threads):
     tracks = str(out / "tracks_excluded.tck")
     weights = str(out / "sift2_weights.txt")
     commands = [
-        ["tckedit", paths["tractogram"], tracks, "-exclude", paths["mask"], *common],
+        ["tckedit", paths["tractogram"], str(out / "tracks_mrtrix_excluded.tck"), "-exclude", paths["mask"], *common],
         ["tcksift2", tracks, paths["fod"], weights, "-act", paths["five_tissue"],
          "-out_mu", str(out / "sift2_mu.txt"), *common],
         ["tck2connectome", tracks, paths["atlas"], str(out / "connectome_raw.csv"),
@@ -111,6 +111,86 @@ def validate_tractogram_sampling(path, reference):
     return {"count": count, "max_segment_mm": max_segment, "allowed_max_segment_mm": limit_mm}
 
 
+def _segment_intersects_mask(track, inverse, binary):
+    """Closed voxel-box predicate, independently of MRtrix's sampled mask lookup."""
+    track = np.asarray(track)
+    if track.ndim != 2 or track.shape[1] != 3 or not np.isfinite(track).all() or len(track) < 2:
+        raise ValueError("Invalid retained streamline")
+    vox = nib.affines.apply_affine(inverse, track)
+    a, b = vox[:-1], vox[1:]
+    lower = np.floor(np.minimum(a, b) + .5 - 1e-8).astype(int)
+    upper = np.floor(np.maximum(a, b) + .5).astype(int)
+    if np.any(upper - lower > 1):
+        raise ValueError("Retained streamline is too sparse for the segment exclusion audit")
+    direction = b - a
+    for bits in np.ndindex(2, 2, 2):
+        cells = np.where(np.asarray(bits), upper, lower)
+        valid = np.all((cells >= 0) & (cells < np.asarray(binary.shape)), axis=1)
+        candidates = np.flatnonzero(valid)
+        candidates = candidates[binary[tuple(cells[candidates].T)]]
+        if not len(candidates):
+            continue
+        start, delta, cell = a[candidates], direction[candidates], cells[candidates]
+        zero = np.abs(delta) < 1e-12
+        outside = zero & ((start < cell - .5) | (start > cell + .5))
+        safe = np.where(zero, 1, delta)
+        t1, t2 = (cell - .5 - start) / safe, (cell + .5 - start) / safe
+        near = np.where(zero, -np.inf, np.minimum(t1, t2)).max(1)
+        far = np.where(zero, np.inf, np.maximum(t1, t2)).min(1)
+        hit = (~outside.any(1)) & (np.maximum(near, 0) <= np.minimum(far, 1))
+        if hit.any():
+            return True
+    return False
+
+
+def filter_segment_crossings(path, mask, output):
+    """Remove residual between-vertex intersections, before any SIFT2 fitting.
+
+    Do not edit/resample individual tracks, reuse weights, or overwrite inputs.
+    This is more conservative than MRtrix's sampled exclusion, not study parity.
+    """
+    from .masks import validate_binary
+    output = Path(output)
+    if output.exists() or output.resolve() in (Path(path).resolve(), Path(mask).resolve()):
+        raise ValueError("Strict exclusion requires a new output path")
+    image = image3d(mask)
+    binary = validate_binary(image)
+    inverse = np.linalg.inv(image.affine)
+    counts = {"input_streamlines": 0, "additional_removed": 0, "retained_streamlines": 0}
+    def retained():
+        # Nibabel may request a fresh generator; counts always describe that pass.
+        counts.update(input_streamlines=0, additional_removed=0, retained_streamlines=0)
+        for track in nib.streamlines.load(str(path), lazy_load=True).streamlines:
+            counts["input_streamlines"] += 1
+            if _segment_intersects_mask(track, inverse, binary):
+                counts["additional_removed"] += 1
+            else:
+                counts["retained_streamlines"] += 1
+                yield track
+    tractogram = nib.streamlines.LazyTractogram(retained, affine_to_rasmm=np.eye(4))
+    nib.streamlines.save(tractogram, str(output))
+    if not counts["retained_streamlines"]:
+        raise ValueError("No streamlines remain after strict electrode exclusion; no connectome accepted")
+    return {**counts, "method": "continuous_segment_closed_voxel_box", "mask_sha256": digest(mask),
+            "streamline_vertices_changed": False, "study_pipeline_equivalence": "not_validated"}
+
+
+def validate_sift2_weights(weights_path, mu_path, expected_streamlines):
+    """Audit weight/track correspondence before matrix construction."""
+    weights = np.atleast_1d(np.loadtxt(weights_path))
+    mu = np.atleast_1d(np.loadtxt(mu_path))
+    if weights.ndim != 1 or len(weights) != expected_streamlines:
+        raise ValueError("SIFT2 weight count differs from the strictly retained tractogram")
+    if not np.isfinite(weights).all() or np.any(weights < 0) or not np.any(weights > 0):
+        raise ValueError("SIFT2 weights must be finite, nonnegative and not all zero")
+    if mu.shape != (1,) or not np.isfinite(mu).all() or mu[0] <= 0:
+        raise ValueError("SIFT2 mu must be one finite positive value")
+    return {"weight_count": len(weights), "weight_sum": float(weights.sum()),
+            "zero_weights": int(np.count_nonzero(weights == 0)), "mu": float(mu[0]),
+            "matrix_weight_convention": "SIFT2_weights_without_mu_scaling",
+            "weights_sha256": digest(weights_path), "mu_sha256": digest(mu_path)}
+
+
 def audit_mask_exclusion(path, mask):
     """Independent closed segment/voxel-box intersection, including between vertices.
 
@@ -123,32 +203,8 @@ def audit_mask_exclusion(path, mask):
     inverse = np.linalg.inv(image.affine)
     count = 0
     for track in nib.streamlines.load(str(path), lazy_load=True).streamlines:
-        vox = nib.affines.apply_affine(inverse, track)
-        if not np.isfinite(vox).all() or len(vox) < 2:
-            raise ValueError("Invalid retained streamline")
-        a, b = vox[:-1], vox[1:]
-        lower = np.floor(np.minimum(a, b) + .5 - 1e-8).astype(int)
-        upper = np.floor(np.maximum(a, b) + .5).astype(int)
-        if np.any(upper - lower > 1):
-            raise ValueError("Retained streamline is too sparse for the segment exclusion audit")
-        direction = b - a
-        for bits in np.ndindex(2, 2, 2):
-            cells = np.where(np.asarray(bits), upper, lower)
-            valid = np.all((cells >= 0) & (cells < np.asarray(binary.shape)), axis=1)
-            candidates = np.flatnonzero(valid)
-            candidates = candidates[binary[tuple(cells[candidates].T)]]
-            if not len(candidates):
-                continue
-            start, delta, cell = a[candidates], direction[candidates], cells[candidates]
-            zero = np.abs(delta) < 1e-12
-            outside = zero & ((start < cell - .5) | (start > cell + .5))
-            safe = np.where(zero, 1, delta)
-            t1, t2 = (cell - .5 - start) / safe, (cell + .5 - start) / safe
-            near = np.where(zero, -np.inf, np.minimum(t1, t2)).max(1)
-            far = np.where(zero, np.inf, np.maximum(t1, t2)).min(1)
-            hit = (~outside.any(1)) & (np.maximum(near, 0) <= np.minimum(far, 1))
-            if hit.any():
-                raise ValueError("Electrode exclusion audit failed: a retained streamline segment intersects the mask; no connectome accepted")
+        if _segment_intersects_mask(track, inverse, binary):
+            raise ValueError("Electrode exclusion audit failed: a retained streamline segment intersects the mask; no connectome accepted")
         count += 1
     if not count:
         raise ValueError("No streamlines remain after electrode exclusion")

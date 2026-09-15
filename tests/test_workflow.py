@@ -10,7 +10,7 @@ import nibabel as nib
 import numpy as np
 
 from dbs_connectome.anatomy import build_hybrid, ct_centerlines, normalize_five_tissue, anatomical_plan
-from dbs_connectome.external import audit_mask_exclusion
+from dbs_connectome.external import audit_mask_exclusion, filter_segment_crossings, _segment_intersects_mask, validate_sift2_weights
 from dbs_connectome.nifti import import_nifti, validate_selection
 from dbs_connectome.provenance import digest, read_json, write_json, record
 from dbs_connectome.reconstruction import selected_artifacts, reconstruction_plan
@@ -166,6 +166,77 @@ class WorkflowTests(unittest.TestCase):
         track = self.track("clear", [[2, 2, 2], [2.3, 2, 2]])
         self.assertEqual(audit_mask_exclusion(track, mask)["mask_intersections"], 0)
 
+    def test_strict_filter_removes_corner_without_changing_retained_vertices(self):
+        m = np.zeros((8, 8, 8)); m[3, 3, 3] = 1
+        mask = self.image("mask.nii.gz", m)
+        clear = np.array([[2, 2, 2], [2.3, 2, 2]], np.float32)
+        corner = np.array([[4.8, 5.2, 6], [5.2, 4.8, 6]], np.float32)
+        source = self.source / "tracks.tck"
+        nib.streamlines.save(nib.streamlines.Tractogram([corner, clear], affine_to_rasmm=np.eye(4)), str(source))
+        before = digest(source), digest(mask)
+        target = self.out / "strict.tck"
+        counts = filter_segment_crossings(source, mask, target)
+        self.assertEqual(counts["additional_removed"], 1)
+        self.assertEqual(counts["retained_streamlines"], 1)
+        actual = nib.streamlines.load(str(target)).streamlines
+        np.testing.assert_array_equal(actual[0], clear)
+        self.assertEqual(audit_mask_exclusion(target, mask)["mask_intersections"], 0)
+        self.assertEqual(before, (digest(source), digest(mask)))
+        with self.assertRaisesRegex(ValueError, "new output"):
+            filter_segment_crossings(source, mask, target)
+
+    def test_strict_filter_rejects_empty_retained_set(self):
+        m = np.zeros((8, 8, 8)); m[3, 3, 3] = 1
+        mask = self.image("mask.nii.gz", m)
+        source = self.track("inside", [[6, 6, 6], [6.2, 6, 6]])
+        with self.assertRaisesRegex(ValueError, "No streamlines remain"):
+            filter_segment_crossings(source, mask, self.out / "empty.tck")
+
+    def test_segment_predicate_matches_bruteforce_boxes_and_oblique_space(self):
+        rng = np.random.default_rng(482)
+        mask = rng.random((6, 6, 6)) < .15
+        cells = np.argwhere(mask)
+        angle = .37
+        affine = np.array([[2*np.cos(angle), -2*np.sin(angle), 0, 10],
+                           [2*np.sin(angle), 2*np.cos(angle), 0, -13], [0, 0, 2, 6], [0, 0, 0, 1]])
+        def oracle(a, b):
+            for cell in cells:
+                enter, leave = 0., 1.
+                for axis in range(3):
+                    delta = b[axis] - a[axis]
+                    if abs(delta) < 1e-12:
+                        if not cell[axis] - .5 <= a[axis] <= cell[axis] + .5:
+                            leave = -1.; break
+                    else:
+                        t0, t1 = sorted(((cell[axis] - .5 - a[axis])/delta, (cell[axis] + .5 - a[axis])/delta))
+                        enter, leave = max(enter, t0), min(leave, t1)
+                if enter <= leave:
+                    return True
+            return False
+        for _ in range(350):
+            a = rng.uniform(.5, 4.5, 3)
+            b = a + rng.uniform(-.35, .35, 3)
+            track = np.array([a, b])
+            expected = oracle(a, b)
+            self.assertEqual(_segment_intersects_mask(track, np.eye(4), mask), expected)
+            world = nib.affines.apply_affine(affine, track)
+            self.assertEqual(_segment_intersects_mask(world, np.linalg.inv(affine), mask), expected)
+
+    def test_sift2_weights_are_bound_to_retained_track_count(self):
+        w, m = self.out / "weights.txt", self.out / "mu.txt"
+        np.savetxt(w, [0, 1.2, 3.4]); np.savetxt(m, [.4])
+        self.assertEqual(validate_sift2_weights(w, m, 3)["weight_count"], 3)
+        with self.assertRaisesRegex(ValueError, "count differs"):
+            validate_sift2_weights(w, m, 4)
+        for bad in ([0, -1, 2], [0, float('nan'), 2], [0, 0, 0]):
+            np.savetxt(w, bad)
+            with self.assertRaisesRegex(ValueError, "finite, nonnegative"):
+                validate_sift2_weights(w, m, 3)
+        np.savetxt(w, [1])
+        np.savetxt(m, [-1])
+        with self.assertRaisesRegex(ValueError, "mu must"):
+            validate_sift2_weights(w, m, 1)
+
     def test_qc_contains_atlas_and_additional_backgrounds(self):
         ref, brain, ct = self.ct_fixture()
         output = self.out / "review.html"
@@ -237,10 +308,14 @@ class WorkflowTests(unittest.TestCase):
                     nib.streamlines.save(tr, target)
                 if c[0] == "tck2connectome":
                     np.savetxt(c[3], matrix, delimiter=",")
+                if c[0] == "tcksift2":
+                    np.savetxt(c[3], [1.])
+                    np.savetxt(c[c.index("-out_mu") + 1], [1.])
         with patch("dbs_connectome.workflow.execute", side_effect=fake_execute), patch("dbs_connectome.cli.execute", side_effect=fake_execute), patch("dbs_connectome.workflow.validate_mif_grid"), patch("dbs_connectome.cli.validate_mif_grid"):
             finish_session(prepared, approval, self.out, 12, streamlines=1000, execute_tools=True)
         self.assertEqual(calls, ["5tt2gmwmi", "tckgen", "tckedit", "tcksift2", "tck2connectome"])
         self.assertEqual(read_json(self.out / "connectome/exclusion_audit.json")["mask_intersections"], 0)
+        self.assertEqual(read_json(self.out / "connectome/sift2_audit.json")["weight_count"], 1)
         self.assertEqual(read_json(self.out / "session_result.json")["alignment"], "UNALIGNED_SINGLE_SESSION")
         self.assertTrue((self.out / "gradient/gradients.npz").exists())
         for p, expected in before.items():
