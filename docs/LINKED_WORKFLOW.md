@@ -15,6 +15,15 @@ empty, explicitly marked metadata record: PE direction and readout time are neve
 The operator must supply reviewed acquisition settings. NIfTI does not independently establish
 patient identity. DICOM identifiers plus human series/visit review are used in DICOM mode.
 No patient data are uploaded. Source content, permissions and names are not changed.
+External commands also run with the private output directory as their working directory, so
+tools using current-directory scratch files do not write into the launch or patient directory.
+
+Reverse-PE input may be a single reviewed b0 image or a series with matching b-values.
+For multi-volume input, b-values are mandatory: only volumes with b ≤ 50 s/mm² are
+selected before averaging. Diffusion-weighted reverse volumes are not included in topup.
+Both PE directions must have matching grids and reviewed contrast/readout metadata.
+The selected thread count is forwarded to both topup and eddy; the installed FSL version
+must support their `--nthr` option. The local topup help was checked for that option.
 
 ## Linked stages
 

@@ -282,6 +282,7 @@ class ProvenanceTests(SyntheticFixture):
                 execute([["stage1", "input"], ["stage2", "output"]], self.root, 8)
             self.assertEqual(launch.call_count, 1)
             self.assertEqual(launch.call_args.args[0], ["/fake", "input"])
+            self.assertEqual(launch.call_args.kwargs["cwd"], self.root.resolve())
 
     def test_mif_header_validation(self):
         reference = self.image("reference.nii.gz")

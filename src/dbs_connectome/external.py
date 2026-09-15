@@ -157,6 +157,7 @@ def audit_mask_exclusion(path, mask):
 
 
 def execute(commands, out, threads=None, environment=None):
+    out = Path(out).resolve(strict=True)
     if threads is not None:
         check_threads(threads)
     env = command_environment(threads or 1)
@@ -176,7 +177,7 @@ def execute(commands, out, threads=None, environment=None):
             versions[name] = {"path": executable, "sha256": digest(executable), "version": "not_queried"}
             continue
         flag = "--version" if name == "dcm2niix" else "-version"
-        version = subprocess.run([executable, flag], capture_output=True, text=True, timeout=30, env=env)
+        version = subprocess.run([executable, flag], capture_output=True, text=True, timeout=30, env=env, cwd=out)
         versions[name] = {"path": executable, "sha256": digest(executable), "returncode": version.returncode,
                           "text": (version.stdout + version.stderr).strip()}
     write_json(Path(out) / "external_versions.json", versions)
@@ -186,7 +187,7 @@ def execute(commands, out, threads=None, environment=None):
         actual = [versions[command[0]]["path"], *command[1:]]
         with (Path(out) / f"command_{i:02d}.log").open("x", encoding="utf-8") as log:
             with subprocess.Popen(actual, shell=False, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                                  text=True, errors="replace", env=env) as process:
+                                  text=True, errors="replace", env=env, cwd=out) as process:
                 for line in process.stdout:
                     log.write(line)
                     log.flush()

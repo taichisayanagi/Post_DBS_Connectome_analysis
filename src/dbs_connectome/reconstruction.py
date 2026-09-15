@@ -158,17 +158,31 @@ def reconstruction_plan(import_run, choices, out, threads):
             raise ValueError("Reverse-b0 must have opposite PE and equal TotalReadoutTime; missing metadata cannot be guessed")
         if rev.shape[:3] != image.shape[:3] or not np.allclose(rev.affine, image.affine, atol=1e-3):
             raise ValueError("Reverse-b0 has a different acquisition grid; do not resample raw data automatically")
-        if "bval" in reverse and np.any(np.loadtxt(reverse["bval"]) > 50):
-            raise ValueError("Reverse-b0 selection contains diffusion-weighted volumes")
+        reverse_count = rev.shape[3] if len(rev.shape) == 4 else 1
+        reverse_indices = list(range(reverse_count))
+        if "bval" in reverse:
+            values = np.atleast_1d(np.loadtxt(reverse["bval"]))
+            if values.shape != (reverse_count,) or not np.isfinite(values).all() or np.any(values < 0):
+                raise ValueError("Reverse-PE b-values are invalid or differ from the image volume count")
+            reverse_indices = np.flatnonzero(values <= 50).tolist()
+            if not reverse_indices:
+                raise ValueError("Reverse-PE series contains no b0 volumes")
+        elif reverse_count > 1:
+            raise ValueError("Multi-volume reverse-PE input requires b-values to identify its b0 volumes")
+        summary["reverse_pe"] = {"input_volumes": reverse_count, "selected_b0_indices": reverse_indices,
+                                 "b0_threshold_s_mm2": 50, "bvalues_provided": "bval" in reverse}
         if np.atleast_1d(np.loadtxt(dwi["bval"]))[0] > 50:
             raise ValueError("This initial paired adapter requires the first DWI volume to be b0 for -align_seepi")
         add("mrconvert", source, p("forward_b0.mif"), "-coord", "3", "0", "-axes", "0,1,2")
         if len(rev.shape) == 4:
-            add("mrmath", reverse["image"], "mean", p("reverse_b0.mif"), "-axis", "3")
+            add("mrconvert", reverse["image"], p("reverse_selected_b0.mif"),
+                "-coord", "3", ",".join(map(str, reverse_indices)), "-axes", "0,1,2,3")
+            add("mrmath", p("reverse_selected_b0.mif"), "mean", p("reverse_b0.mif"), "-axis", "3")
         else:
             add("mrconvert", reverse["image"], p("reverse_b0.mif"))
         add("mrcat", p("forward_b0.mif"), p("reverse_b0.mif"), p("b0_pair.mif"), "-axis", "3")
-        rpe = ["-rpe_pair", "-se_epi", p("b0_pair.mif"), "-align_seepi"]
+        rpe = ["-rpe_pair", "-se_epi", p("b0_pair.mif"), "-align_seepi",
+               "-topup_options", f" --nthr={threads}"]
     # In paired mode, the first SE-EPI image is exactly the first (b0) DWI volume.
     add("dwifslpreproc", source, p("eddy.mif"), *rpe, "-pe_dir", pe, "-readout_time", readout,
         "-eddy_mask", p("eddy_mask.mif"), "-eddy_options", f" --repol --data_is_shelled --cnr_maps --residuals --nthr={threads}",

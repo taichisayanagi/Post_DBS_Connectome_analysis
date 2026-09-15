@@ -247,12 +247,46 @@ class ReconstructionTests(unittest.TestCase):
         eddy = next(c for c in commands if c[0] == "dwifslpreproc")
         self.assertIn("-rpe_pair", eddy)
         self.assertIn("-align_seepi", eddy)
+        self.assertEqual(eddy[eddy.index("-topup_options") + 1], " --nthr=12")
         self.assertTrue(any("-coord" in c and c[c.index("-coord")+1:c.index("-coord")+3] == ["3", "0"] for c in commands))
 
     def test_bad_gradient_table_is_not_repaired_silently(self):
         np.savetxt(self.dwi["bvec"], np.zeros((3, 31)))
         with self.assertRaisesRegex(ValueError, "unit length"):
             diffusion_summary(self.dwi)
+
+    def reverse_series(self, values):
+        # Replace synthetic fixtures only; production records remain write-once.
+        Path(self.reverse["json"]).unlink()
+        (self.imported / "converted.json").unlink()
+        (self.imported / "provenance.json").unlink()
+        self.reverse = self.artifact("reverse_b0", (6, 6, 6, 3))
+        if values is not None:
+            path = self.imported / "reverse_b0.bval"
+            np.savetxt(path, values)
+            self.reverse["bval"] = str(path)
+            self.reverse["hashes"][str(path)] = digest(path)
+        write_json(self.imported / "converted.json", {"artifacts": [self.dwi, self.t1, self.reverse]})
+        record(self.imported, "import-session", [], {}, [self.imported / "converted.json"])
+        self.choices.update(distortion="paired", reverse_contrast_reviewed=True)
+        self.choices["artifacts"]["reverse_b0"] = "reverse_b0"
+
+    def test_reverse_diffusion_volumes_are_excluded_before_averaging(self):
+        self.reverse_series([0, 1000, 0])
+        _, summary, commands, _ = self.plan()
+        self.assertEqual(summary["reverse_pe"]["selected_b0_indices"], [0, 2])
+        extraction = next(c for c in commands if "reverse_selected_b0.mif" in " ".join(c) and c[0] == "mrconvert")
+        self.assertEqual(extraction[extraction.index("-coord") + 1:extraction.index("-coord") + 3], ["3", "0,2"])
+        average = next(c for c in commands if c[0] == "mrmath" and c[3].endswith("reverse_b0.mif"))
+        self.assertTrue(average[1].endswith("reverse_selected_b0.mif"))
+
+    def test_reverse_missing_invalid_or_no_baseline_bvalues_fail(self):
+        for values, message in [(None, "requires b-values"), ([0, 1000], "volume count"),
+                                ([1000, 1000, 1000], "no b0"), ([0, float("nan"), 0], "invalid")]:
+            with self.subTest(values=values):
+                self.reverse_series(values)
+                with self.assertRaisesRegex(ValueError, message):
+                    self.plan()
 
     def test_volume_gradient_count_mismatch(self):
         np.savetxt(self.dwi["bval"], np.zeros(30))

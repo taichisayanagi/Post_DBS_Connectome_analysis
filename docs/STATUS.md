@@ -18,7 +18,7 @@ This is not an end-to-end validated DICOM pipeline or a clinical tool.
 
 ## Evidence obtained so far
 
-- 81 synthetic unit/integration/static-interface tests passed locally on macOS/Python 3.12. They cover source/output separation, byte-integrity guards, DICOM/NIfTI lineage, acquisition guards, geometry, mask approval hashes, label indexing,
+- 85 synthetic unit/integration/static-interface tests passed locally on macOS/Python 3.12. They cover source/output separation, byte-integrity guards, DICOM/NIfTI lineage, acquisition guards, geometry, mask approval hashes, label indexing,
   gradient reference integrity, GUI access controls, job execution and cancellation records.
 - A local browser QC job using an artificial phantom was queued, completed and opened in the GUI.
   Browser QA of the DICOM control-panel GUI subsequently covered installation discovery, synthetic
@@ -39,6 +39,12 @@ This is not an end-to-end validated DICOM pipeline or a clinical tool.
   gradient embedding for real. It validates artifact handoff, not MRI-tool interoperability.
 - A real NIfTI intake smoke test copied six source files and confirmed identical original
   bytes, modification times and permissions. It did not execute heavy MRI reconstruction.
+- A subsequent local real-input run completed MRtrix conversion, MP-PCA denoising,
+  b0 selection and FSL topup; eddy and downstream reconstruction are being checked separately.
+  This partial execution is not a completed input-to-gradient validation. Input review also
+  motivated explicit b-value-driven selection for mixed reverse-PE series, with refusal tests
+  for missing/mismatched b-values and no-baseline data. The reverse b-value field was checked
+  in the running browser GUI. All external commands now use the private output working directory.
 
 No real patient DICOM-to-result run has been performed with this software. No patient data or
 private validation artifacts are included here. Tests are not evidence of clinical validity.

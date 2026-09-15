@@ -47,6 +47,10 @@ class GuiSurfaceTests(unittest.TestCase):
         self.assertIn(".workflow-grid>div{min-width:0}", self.html)
         self.assertIn(".workflow-status{overflow-wrap:anywhere}", self.html)
 
+    def test_reverse_pe_gradient_file_is_exposed(self):
+        self.assertIn("['reverse_bval','Reverse-PE b-values (required for multi-volume input)']", self.html)
+        self.assertIn("for(const key of ['json','bval'])", self.html)
+
     def test_private_qc_and_development_limits_remain_visible(self):
         self.assertIn("Research use only", self.html)
         self.assertIn("not independently validated end to end", self.html)
