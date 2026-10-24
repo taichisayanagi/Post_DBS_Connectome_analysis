@@ -65,7 +65,7 @@ def compact_raw(raw, labels):
     return raw[np.ix_(labels - 1, labels - 1)]
 
 
-def embed(matrix, indices, settings=Settings(), reference=None):
+def embed(matrix, indices, settings=Settings(), reference=None, *, legacy_zero_profiles=False):
     matrix = validate_matrix(matrix)
     indices = np.asarray(indices, dtype=int)
     if len(np.unique(indices)) != len(indices) or np.any(indices < 0) or np.any(indices >= len(matrix)):
@@ -75,7 +75,7 @@ def embed(matrix, indices, settings=Settings(), reference=None):
     if not 1 <= settings.n_retained <= settings.n_components:
         raise ValueError("Invalid retained component count")
     x = matrix[np.ix_(indices, indices)]
-    if np.any(x.sum(1) == 0):
+    if np.any(x.sum(1) == 0) and not legacy_zero_profiles:
         raise ValueError("Isolated cortical node: freeze and document a common valid basis first")
     if settings.log_transform:
         x = np.log1p(x)

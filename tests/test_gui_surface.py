@@ -53,7 +53,7 @@ class GuiSurfaceTests(unittest.TestCase):
 
     def test_private_qc_and_development_limits_remain_visible(self):
         self.assertIn("Research use only", self.html)
-        self.assertIn("not independently validated end to end", self.html)
+        self.assertIn("Full image-to-paper reproduction is not yet certified", self.html)
         self.assertIn("QC is never approved automatically", self.html)
         self.assertIn("End-to-end DICOM reconstruction is not yet validated", self.html)
         self.assertIn("No approval is recorded here", TEMPLATE)

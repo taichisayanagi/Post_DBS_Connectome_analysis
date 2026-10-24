@@ -191,7 +191,7 @@ def anatomical_plan(t1, transform, reference, resources, out, threads):
                          "--tval", str(sub / "label" / (hemi + ".schaefer400_7net.annot"))])
     commands.append([str(fs / "bin/mri_aparc2aseg"), "--s", subject, "--annot", "schaefer400_7net", "--o", p("surface.mgz")])
     for hemi in ("left", "right"):
-        commands.append([str(fs / "bin/fspython"), str(resources["nextbrain_script"]), "--i", str(mri / "T1.mgz"),
+        commands.append([str(fs / "bin/fspython"), str(Path(__file__).with_name("nextbrain_runner.py")), str(resources["nextbrain_script"]), "--i", str(mri / "T1.mgz"),
             "--atlas_mode", "full", "--atlas_dir", str(resources["nextbrain_atlas"]), "--hemi", hemi[0],
             "--i_seg", p("nextbrain/SynthSeg.mgz"), "--i_field", p("nextbrain/MNI_registration.mgz"),
             "--o", p("nextbrain/seg_" + hemi + ".mgz"), "--o_vol", p("nextbrain/vols_" + hemi + ".csv"),

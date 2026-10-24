@@ -109,6 +109,13 @@ def reconstruction_plan(import_run, choices, out, threads):
     if override and not str(choices.get("metadata_reason", "")).strip():
         raise ValueError("Missing/overridden acquisition metadata requires a documented source or reason")
     model = choices.get("fod_model")
+    profile = choices.get("pipeline_profile", "general")
+    if profile not in ("general", "paper_dil1"):
+        raise ValueError("Unknown processing profile")
+    paper = profile == "paper_dil1"
+    if paper and model != "wm_csf":
+        raise ValueError("The frozen paper recipe requires the recorded WM+CSF model")
+    summary["pipeline_profile"] = profile
     if model not in ("wm_csf", "wm_gm_csf"):
         raise ValueError("Explicitly select two-tissue WM+CSF or three-tissue WM+GM+CSF CSD")
     if model == "wm_gm_csf" and len(summary["shells"]) < 2:
@@ -173,7 +180,11 @@ def reconstruction_plan(import_run, choices, out, threads):
                                  "b0_threshold_s_mm2": 50, "bvalues_provided": "bval" in reverse}
         if np.atleast_1d(np.loadtxt(dwi["bval"]))[0] > 50:
             raise ValueError("This initial paired adapter requires the first DWI volume to be b0 for -align_seepi")
-        add("mrconvert", source, p("forward_b0.mif"), "-coord", "3", "0", "-axes", "0,1,2")
+        if paper:
+            add("dwiextract", source, p("forward_bzeros.mif"), "-bzero")
+            add("mrmath", p("forward_bzeros.mif"), "mean", p("forward_b0.mif"), "-axis", "3")
+        else:
+            add("mrconvert", source, p("forward_b0.mif"), "-coord", "3", "0", "-axes", "0,1,2")
         if len(rev.shape) == 4:
             add("mrconvert", reverse["image"], p("reverse_selected_b0.mif"),
                 "-coord", "3", ",".join(map(str, reverse_indices)), "-axes", "0,1,2,3")
@@ -184,8 +195,9 @@ def reconstruction_plan(import_run, choices, out, threads):
         rpe = ["-rpe_pair", "-se_epi", p("b0_pair.mif"), "-align_seepi",
                "-topup_options", f" --nthr={threads}"]
     # In paired mode, the first SE-EPI image is exactly the first (b0) DWI volume.
+    eddy_options = f" --slm=linear --nthr={threads}" if paper else f" --repol --data_is_shelled --cnr_maps --residuals --nthr={threads}"
     add("dwifslpreproc", source, p("eddy.mif"), *rpe, "-pe_dir", pe, "-readout_time", readout,
-        "-eddy_mask", p("eddy_mask.mif"), "-eddy_options", f" --repol --data_is_shelled --cnr_maps --residuals --nthr={threads}",
+        "-eddy_mask", p("eddy_mask.mif"), "-eddy_options", eddy_options,
         "-eddyqc_all", p("eddy_qc"), "-export_grad_fsl", p("eddy.bvec"), p("eddy.bval"))
     add("dwi2mask", p("eddy.mif"), p("prebias_mask.mif"))
     add("dwibiascorrect", "ants", p("eddy.mif"), p("native_preprocessed.mif"), "-mask", p("prebias_mask.mif"), "-bias", p("bias.mif"))
@@ -195,7 +207,9 @@ def reconstruction_plan(import_run, choices, out, threads):
     add("dwiextract", p("dwi_2mm.mif"), p("bzeros_2mm.mif"), "-bzero")
     add("mrmath", p("bzeros_2mm.mif"), "mean", p("b0_2mm.nii.gz"), "-axis", "3")
     add("mrcalc", p("b0_2mm.nii.gz"), p("brain_mask_2mm.nii.gz"), "-mult", p("b0_brain_2mm.nii.gz"))
-    add("dwi2response", "dhollander", p("dwi_2mm.mif"), p("wm.txt"), p("gm.txt"), p("csf.txt"), "-mask", p("brain_mask_2mm.nii.gz"))
+    response_image = p("native_preprocessed.mif" if paper else "dwi_2mm.mif")
+    response_mask = p("native_mask.mif" if paper else "brain_mask_2mm.nii.gz")
+    add("dwi2response", "dhollander", response_image, p("wm.txt"), p("gm.txt"), p("csf.txt"), "-mask", response_mask)
     tissues = ["wm", "csf"] if model == "wm_csf" else ["wm", "gm", "csf"]
     fod_args, norm_args = [], []
     for tissue in tissues:
@@ -204,7 +218,7 @@ def reconstruction_plan(import_run, choices, out, threads):
     add("dwi2fod", "msmt_csd", p("dwi_2mm.mif"), *fod_args, "-mask", p("brain_mask_2mm.nii.gz"))
     add("mtnormalise", *norm_args, "-mask", p("brain_mask_2mm.nii.gz"))
     commands.append(["antsRegistrationSyNQuick.sh", "-d", "3", "-f", p("b0_2mm.nii.gz"),
-                     "-m", artifacts["t1"]["image"], "-o", p("t1_to_b0_"), "-t", "r", "-n", str(threads)])
+                     "-m", artifacts["t1"]["image"], "-o", p("t1_to_b0_"), "-t", "a" if paper else "r", "-n", str(threads)])
     for role in ("ct", "t2"):
         if role in artifacts:
             commands.append(["antsRegistrationSyNQuick.sh", "-d", "3", "-f", artifacts["t1"]["image"],
@@ -215,6 +229,7 @@ def reconstruction_plan(import_run, choices, out, threads):
     outputs = {"dwi": p("dwi_2mm.mif"), "fod": p("wm_norm.mif"), "reference": p("b0_brain_2mm.nii.gz"),
                "brain_mask": p("brain_mask_2mm.nii.gz"), "t1_in_b0": p("t1_to_b0_Warped.nii.gz"),
                "t1_transform": p("t1_to_b0_0GenericAffine.mat")}
+    outputs["fod_pre_normalization"] = p("wm_fod.mif")
     if "ct" in artifacts:
         outputs["ct_in_b0"] = p("ct_in_b0.nii.gz")
     return artifacts, summary, commands, outputs
@@ -253,6 +268,7 @@ def reconstruct(import_run, choices, out, threads, execute_tools=False):
         (out / "mask_review.html").write_text(html)
         status = "completed"
         write_json(out / "reconstruction.json", {"status": "reconstruction_qc_required", "outputs": outputs,
+            "pipeline_profile": choices.get("pipeline_profile", "general"),
             "import_run": str(Path(import_run).resolve()), "source_root": original, "artifacts": choices["artifacts"],
             "hashes": {p: digest(p) for p in outputs.values()},
             "next": ["Inspect raw/denoise/eddy residuals and rotated gradients", "Review T1/CT/DWI registration",

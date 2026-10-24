@@ -107,9 +107,12 @@ def prepare_session(reconstruction_run, settings, out, threads, execute_tools=Fa
                    backgrounds=backgrounds, five_tissue=five)
     bundle = {"reference": outputs["reference"], "fod": outputs["fod"], "five_tissue": str(five),
               "atlas": str(atlas), "mask": str(mask), "nodes": str(nodes)}
+    if recon.get("pipeline_profile") == "paper_dil1":
+        bundle["fod_pre_normalization"] = outputs["fod_pre_normalization"]
     assert_inputs_unchanged(before)
     write_json(out / "source_integrity.json", {"source_bytes_unchanged": True, "input_count": len(before)})
     write_json(out / "prepared.json", {"status": "needs_qc", "outputs": bundle,
+        "pipeline_profile": recon.get("pipeline_profile", "general"),
         "source_root": recon.get("source_root"),
         "hashes": {p: digest(p) for p in bundle.values()}, "missing_dwi_nodes": missing,
         "reconstruction_run": str(Path(reconstruction_run).resolve()),
@@ -172,6 +175,9 @@ def finish_session(prepared_run, approval, out, threads, streamlines=1000000, re
     if original:
         require_separate_output(out, original)
     paths = prepared_paths(prepared_run)
+    paper = read_json(Path(prepared_run) / "prepared.json").get("pipeline_profile") == "paper_dil1"
+    if paper and "fod_pre_normalization" not in paths:
+        raise ValueError("Paper tractography requires the recorded pre-normalization FOD")
     require_approval(approval, paths["mask"], paths["reference"], paths["atlas"])
     source_inputs = [Path(prepared_run) / "prepared.json", approval, *paths.values()]
     before = freeze_inputs(source_inputs)
@@ -179,12 +185,15 @@ def finish_session(prepared_run, approval, out, threads, streamlines=1000000, re
     tracks = out / "tractography/tracks.tck"
     gmwmi = out / "tractography/gmwmi.mif"
     commands = [["5tt2gmwmi", paths["five_tissue"], str(gmwmi), "-nthreads", str(threads)],
-        ["tckgen", paths["fod"], str(tracks), "-algorithm", "iFOD2", "-act", paths["five_tissue"],
+        ["tckgen", paths["fod_pre_normalization"] if paper else paths["fod"], str(tracks), "-algorithm", "iFOD2", "-act", paths["five_tissue"],
          "-backtrack", "-seed_gmwmi", str(gmwmi), "-select", str(streamlines), "-cutoff", "0.06",
-         "-step", "0.5", "-downsample", "1", "-nthreads", str(threads)]]
-    config = {**paths, "tractogram": str(tracks), "approval": str(Path(approval).resolve())}
+         "-step", "1" if paper else "0.5", "-angle", "45", "-minlength", "4", "-maxlength", "200",
+         "-downsample", "1", "-nthreads", str(threads)]]
+    config = {**{k:v for k,v in paths.items() if k != "fod_pre_normalization"}, "tractogram": str(tracks), "approval": str(Path(approval).resolve())}
     write_json(out / "connectome_config.json", config)
     write_json(out / "plan.json", {"tractography": commands,
+        "pipeline_profile": "paper_dil1" if paper else "general",
+        "replay_boundary": "Explicit integration step and raw FOD match the recorded paper settings; dense output and continuous-segment exclusion are stricter than the historical sampled exclusion. Not an exact tractogram replay.",
         "then": ["tckedit electrode exclusion", "strict continuous-segment exclusion and reread audit",
                  "SIFT2 refit", "weight-count and mu audit", "tck2connectome", "hemisphere G1-G4"],
         "reference_run": str(reference_run) if reference_run else None,

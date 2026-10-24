@@ -109,7 +109,8 @@ class GuiTests(unittest.TestCase):
                 self.assertNotIn(str(self.data), html)
             request = Request(base + "/api/state", headers={"Authorization": "Bearer synthetic-token"})
             with urlopen(request, timeout=2) as response:
-                self.assertEqual(json.load(response)["version"], "0.2.0a1")
+                from dbs_connectome import __version__
+                self.assertEqual(json.load(response)["version"], __version__)
             request = Request(base + "/api/state", headers={"Authorization": "Bearer synthetic-token", "Origin": "https://untrusted.example"})
             with self.assertRaises(HTTPError) as error:
                 urlopen(request, timeout=2)

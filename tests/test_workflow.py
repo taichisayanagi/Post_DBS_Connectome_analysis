@@ -71,6 +71,23 @@ class WorkflowTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "Confirm"):
             import_nifti(selection, self.out)
 
+    def test_paper_recipe_uses_native_response_and_preserves_both_fods(self):
+        import_nifti(self.nifti_selection(),self.out)
+        choices={"artifacts":{"t1":"t1","dwi":"dwi"},"acquisition_reviewed":True,
+                 "phase_encoding":"j-","readout_seconds":.08,"fod_model":"wm_csf",
+                 "distortion":"none","uncorrected_distortion_accepted":True,"degibbs_axes":"skip",
+                 "pipeline_profile":"paper_dil1"}
+        _,summary,commands,outputs=reconstruction_plan(self.out,choices,self.root/'recon',12)
+        response=next(c for c in commands if c[0]=='dwi2response')
+        self.assertTrue(response[2].endswith('native_preprocessed.mif'))
+        eddy=next(c for c in commands if c[0]=='dwifslpreproc')
+        self.assertEqual(eddy[eddy.index('-eddy_options')+1],' --slm=linear --nthr=12')
+        self.assertTrue(outputs['fod_pre_normalization'].endswith('wm_fod.mif'))
+        self.assertTrue(outputs['fod'].endswith('wm_norm.mif'))
+        self.assertEqual(summary['pipeline_profile'],'paper_dil1')
+        choices['fod_model']='wm_gm_csf'
+        with self.assertRaisesRegex(ValueError,'WM\\+CSF'):reconstruction_plan(self.out,choices,self.root/'recon',12)
+
     def test_nifti_output_inside_original_rejected(self):
         selection = self.nifti_selection()
         with self.assertRaisesRegex(ValueError, "read-only"):

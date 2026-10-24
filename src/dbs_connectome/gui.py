@@ -17,9 +17,15 @@ from urllib.parse import parse_qs, urlparse
 import uuid
 
 from .masks import REVIEW_ITEMS
+from . import __version__
 from .provenance import new_run, read_json, require_separate_output, write_json
 
 FIELDS = {
+    "replay-suite": ["config"],
+    "mask-repair": ["recipe"],
+    "shared-masks": ["first_reference", "second_reference", "first_mask", "second_mask"],
+    "study": ["manifest"], "graph-study": ["manifest"], "sensitivity-study": ["manifest"], "control-study": ["manifest"], "reference-validation": ["manifest"], "geometry-controls": ["manifest"], "representation-study": ["manifest"],
+    "study-mask": ["reference", "seed_mask", "spec"],
     "cohort-reference": ["nodes"], "longitudinal": ["first_connectome_run", "second_connectome_run", "reference_run", "nodes"],
     "results": ["gradient_run", "nodes"],
     "simulate": ["segmentation"], "material": ["reference", "five_tissue"],
@@ -73,6 +79,26 @@ class JobManager:
             if path.is_dir() != is_directory:
                 raise ValueError("Wrong file/directory type: " + field)
             args += ["--" + field.replace("_", "-"), str(path)]
+        if stage in ("study", "graph-study", "sensitivity-study", "control-study", "reference-validation", "geometry-controls", "representation-study"):
+            from .study import manifest_paths
+            spec = read_json(self.resolve_input(supplied["manifest"]))
+            for path in manifest_paths(spec):
+                if not self.resolve_input(path).is_file():
+                    raise ValueError("Study manifest inputs must be files under the allowed roots")
+        if stage == "replay-suite":
+            from .replay_suite import suite_paths
+            spec=read_json(self.resolve_input(supplied['config']))
+            for task in spec.get('tasks',[]):
+                if not self.resolve_input(task['manifest']).is_file():
+                    raise ValueError('Suite manifests must be files under the allowed roots')
+            for path in suite_paths(spec):
+                if not self.resolve_input(path).is_file():
+                    raise ValueError('Suite inputs must be files under the allowed roots')
+        if stage == "mask-repair":
+            from .mask_lineage import recipe_paths
+            for path in recipe_paths(read_json(self.resolve_input(supplied["recipe"]))):
+                if not self.resolve_input(path).is_file():
+                    raise ValueError("Repair inputs must be files under the allowed roots")
         if stage == "cohort-reference":
             selection = body.get("selection", {})
             if not isinstance(selection, dict) or not isinstance(selection.get("runs"), list):
@@ -176,12 +202,12 @@ class JobManager:
                 if not isinstance(value, str):
                     raise ValueError("Prepared config paths must be strings")
                 self.resolve_input(config_path.parent / value)
-        if stage in ("connectome", "reconstruct", "prepare-session", "finish-session", "simulate"):
+        if stage in ("connectome", "reconstruct", "prepare-session", "finish-session", "simulate", "shared-masks"):
             threads = body.get("threads")
             if not isinstance(threads, int) or isinstance(threads, bool) or not 1 <= threads <= 128:
                 raise ValueError("Select an explicit thread count between 1 and 128")
             args += ["--threads", str(threads)]
-        if stage in ("convert", "connectome", "import-session", "reconstruct", "prepare-session", "finish-session", "simulate") and body.get("execute"):
+        if stage in ("convert", "connectome", "import-session", "reconstruct", "prepare-session", "finish-session", "simulate", "shared-masks") and body.get("execute"):
             if body.get("approve_compute") is not True:
                 raise ValueError("Explicit confirmation is required to execute external image-processing tools")
             args.append("--execute")
@@ -249,7 +275,7 @@ class JobManager:
             with self.lock:
                 if job["status"] != "cancelled":
                     job["status"] = "completed" if code == 0 else "failed"
-                if job["status"] == "completed":
+                if job["status"] in ("completed", "failed"):
                     provs = list(Path(job["output_root"]).glob("*/provenance.json"))
                     if provs:
                         job["result_run"] = str(provs[0].parent)
@@ -259,10 +285,13 @@ class JobManager:
                     reports += list(Path(job["output_root"]).glob("*/results_review.html"))
                     reports += list(Path(job["output_root"]).glob("*/simulation_review.html"))
                     reports += list(Path(job["output_root"]).glob("*/longitudinal_review.html"))
+                    reports += list(Path(job["output_root"]).glob("*/study_review.html"))
+                    reports += list(Path(job["output_root"]).glob("*/suite_review.html"))
+                    reports += list(Path(job["output_root"]).glob("*/post1_mask_review.html"))
                     reports += list(Path(job["output_root"]).glob("*/report/results_review.html"))
                     if reports:
                         job["report"] = str(reports[0])
-                    if job["stage"] in ("reconstruct", "prepare-session", "electrode", "adopt-electrode", "material") and job["status"] == "completed":
+                    if job["stage"] in ("reconstruct", "prepare-session", "electrode", "adopt-electrode", "material", "study-mask", "mask-repair", "shared-masks") and job["status"] == "completed":
                         job["status"] = "needs_qc"
                 job["returncode"] = code
         except Exception as exc:
@@ -291,7 +320,7 @@ class JobManager:
     def state(self):
         with self.lock:
             return {"jobs": [self.snapshot(j) for j in reversed(list(self.jobs.values()))],
-                    "data_root": str(self.data_root), "output_root": str(self.root), "version": "0.2.0a1"}
+                    "data_root": str(self.data_root), "output_root": str(self.root), "version": __version__}
 
     def cancel(self, identifier):
         with self.lock:
@@ -361,12 +390,13 @@ def make_handler(manager, token):
                 if path == "/api/result":
                     identifier = parse_qs(urlparse(self.path).query).get("job", [""])[0]
                     job = manager.jobs.get(identifier)
-                    names = {"inventory": "inventory.json", "import-session": "converted.json", "import-nifti": "converted.json",
+                    names = {"geometry-controls": "geometry_result.json", "replay-suite": "suite_result.json", "reference-validation": "reference_validation_result.json", "control-study": "control_result.json", "sensitivity-study": "sensitivity_result.json", "mask-repair": "mask_lineage.json", "shared-masks": "shared_masks.json", "study-mask": "void_follow_result.json", "study": "study_result.json", "graph-study": "graph_result.json", "inventory": "inventory.json", "import-session": "converted.json", "import-nifti": "converted.json",
                              "environment": "environment.json", "reconstruct": "reconstruction.json",
                              "prepare-session": "prepared.json", "adopt-electrode": "prepared.json", "electrode": "electrode_result.json",
                              "simulate": "simulation_result.json", "material": "material_result.json",
                              "cohort-reference": "cohort_result.json", "longitudinal": "longitudinal_result.json",
                              "finish-session": "session_result.json", "approve": "approval.json"}
+                    names['representation-study'] = 'representation_result.json'
                     if not job or job["status"] not in ("completed", "needs_qc") or job["stage"] not in names:
                         raise ValueError("No completed workflow result for this job")
                     result = read_json(Path(job["result_run"]) / names[job["stage"]])

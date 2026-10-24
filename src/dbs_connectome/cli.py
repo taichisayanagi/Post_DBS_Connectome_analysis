@@ -5,6 +5,7 @@ from pathlib import Path
 import sys
 
 import numpy as np
+from . import __version__
 
 from .external import audit_mask_exclusion, connectome_plan, conversion_plan, execute, filter_segment_crossings, validate_mif_grid, validate_tractogram_sampling, validate_sift2_weights
 from .gradients import compact_raw, displacement, geometry, hemisphere_embeddings, load_nodes, settings_dict
@@ -15,17 +16,31 @@ from .qc import browser_report
 
 def parser():
     p = argparse.ArgumentParser(description="DBS Native Connectome: unvalidated research prototype")
-    p.add_argument("--version", action="version", version="0.2.0a1")
+    p.add_argument("--version", action="version", version=__version__)
     sub = p.add_subparsers(dest="command", required=True)
     gui = sub.add_parser("gui", help="Start the loopback-only browser application")
     gui.add_argument("--data-root", required=True)
     gui.add_argument("--output-root", required=True)
     gui.add_argument("--port", type=int, default=8765)
-    for name in ("environment", "inventory", "import-session", "import-nifti", "reconstruct", "prepare-session", "finish-session", "convert", "mask", "union", "approve", "connectome", "reference", "embed", "change", "fingerprint", "qc", "electrode", "adopt-electrode", "simulate", "material", "results", "cohort-reference", "longitudinal"):
+    for name in ("environment", "inventory", "import-session", "import-nifti", "reconstruct", "prepare-session", "finish-session", "convert", "mask", "union", "approve", "connectome", "reference", "embed", "change", "fingerprint", "qc", "electrode", "adopt-electrode", "simulate", "material", "results", "cohort-reference", "longitudinal", "study", "graph-study", "sensitivity-study", "control-study", "reference-validation", "geometry-controls", "representation-study", "replay-suite", "study-mask", "mask-repair", "shared-masks"):
         s = sub.add_parser(name)
         s.add_argument("--output-root", required=True, help="Private result root outside source checkout")
         if name == "environment":
             pass
+        elif name in ("study", "graph-study", "sensitivity-study", "control-study", "reference-validation", "geometry-controls", "representation-study"):
+            s.add_argument("--manifest", required=True)
+        elif name == "replay-suite":
+            s.add_argument("--config", required=True)
+        elif name == "mask-repair":
+            s.add_argument("--recipe", required=True)
+        elif name == "shared-masks":
+            for field in ("first-reference", "second-reference", "first-mask", "second-mask"):
+                s.add_argument("--"+field, required=True)
+            s.add_argument("--threads", required=True, type=int)
+            s.add_argument("--execute", action="store_true")
+        elif name == "study-mask":
+            for field in ("reference", "seed-mask", "spec"):
+                s.add_argument("--"+field, required=True)
         elif name == "cohort-reference":
             s.add_argument("--nodes", required=True)
             s.add_argument("--selection", required=True)
@@ -130,7 +145,52 @@ def checked_artifact(run, filename, stage):
 def run(args, out):
     command = args.command
     inputs, outputs, parameters, status = [], [], {}, "completed"
-    if command == "inventory":
+    if command == "mask-repair":
+        from .mask_lineage import repair_mask
+        repair_mask(args.recipe, out)
+        return
+    elif command == "shared-masks":
+        from .mask_lineage import shared_masks
+        shared_masks(args.first_reference, args.second_reference, args.first_mask, args.second_mask,
+                     out, args.threads, args.execute)
+        return
+    elif command == "study-mask":
+        from .void_follow import run_void_follow
+        run_void_follow(args.reference, args.seed_mask, read_json(args.spec), out)
+        return
+    elif command == "graph-study":
+        from .graphs import run_graph_study
+        run_graph_study(args.manifest, out)
+        return
+    elif command == "sensitivity-study":
+        from .sensitivity import run_sensitivity
+        run_sensitivity(args.manifest, out)
+        return
+    elif command == "control-study":
+        from .controls import run_controls
+        run_controls(args.manifest, out)
+        return
+    elif command == "reference-validation":
+        from .reference_validation import run_reference_validation
+        run_reference_validation(args.manifest, out)
+        return
+    elif command == "replay-suite":
+        from .replay_suite import run_suite
+        run_suite(args.config, out)
+        return
+    elif command == "geometry-controls":
+        from .geometry_controls import run_geometry_controls
+        run_geometry_controls(args.manifest, out)
+        return
+    elif command == "representation-study":
+        from .representations import run_representations
+        run_representations(args.manifest, out)
+        return
+    elif command == "study":
+        from .study import run_study
+        run_study(args.manifest, out)
+        return
+    elif command == "inventory":
         from .intake import inventory
         inventory(args.dicom_dir, out)
         return

@@ -8,6 +8,7 @@ from pathlib import Path
 
 import nibabel as nib
 import numpy as np
+from . import __version__
 
 
 def digest(path):
@@ -63,11 +64,15 @@ def assert_inputs_unchanged(before):
 
 def record(out, stage, inputs, parameters, outputs, status="completed"):
     versions = {}
-    for name in ("numpy", "scipy", "nibabel", "brainspace"):
+    for name in ("numpy", "scipy", "nibabel", "brainspace", "bctpy", "networkx"):
         versions[name] = importlib.metadata.version(name)
+    package=Path(__file__).resolve().parent
+    code={str(p.relative_to(package)):digest(p) for p in sorted(package.rglob('*'))
+          if p.is_file() and p.suffix in ('.py','.html') and '__pycache__' not in p.parts}
     item = {
         "schema_version": 1,
-        "software_version": "0.2.0a1",
+        "software_version": __version__,
+        "package_source_sha256": code,
         "utc": datetime.now(timezone.utc).isoformat(),
         "stage": stage,
         "status": status,

@@ -1,6 +1,6 @@
 # Development status
 
-Updated 2026-10-24 (JST). Version: **0.2.0a1**, GUI research preview.
+Updated 2026-10-24 (JST). Version: **0.3.0a1**, GUI research preview.
 This is not an end-to-end validated DICOM pipeline or a clinical tool.
 
 | Workstream | Current state | Next acceptance check |
@@ -12,12 +12,44 @@ This is not an end-to-end validated DICOM pipeline or a clinical tool.
 | CT/MRI/DWI reconstruction | Acquisition-gated DWI/FOD and rigid registrations; linked FreeSurfer/NextBrain/5TT adapters | Independent full patient reconstruction |
 | Electrode mask | CT candidates + constrained MRI void, manual RAS point and local add/erase editor; immutable mask adoption | Study-algorithm equivalence; independent coverage validation; automatic longitudinal registration |
 | Linked connectome | QC → ACT → strict segment exclusion and audit → SIFT2 refit and weight checks → matrix → G1–G4 | Real-patient whole-chain testing |
-| Gradient G1–G4 | Explicit training-mean reference, paired alignment, change CSV and interactive plots/matrix report | Automated LOSO; independent axis stability and study-level equivalence |
+| Gradient G1–G4 | Common/LOSO cohort orchestration, 25 measures/network, exact clinical tests and interactive heatmap/scatter; eight-setting sensitivity | Full supplementary-family and figure replay; independent acquisition validation |
+| Numerical replay | Allowlisted suite for gradients, graphs, controls, sensitivity and unmasked reference benchmarks; frozen-output comparison | Complete all remaining paper coverage gates; resolve historical graph-basis lineage |
 | Field / VTA-like modeling | Separate OSS-DBS 0.5.9 adapter; explicit model/tip/rotation; voltage/current; field NIfTI and local viewer | Independent localization, mesh/domain convergence, pulse-width/axon modeling; not clinically validated |
 | Distribution | MIT GUI/workflow package; calls user-installed software; no all-in-one bundle | Stage-specific environment checks and tested local dependency combinations |
 | Environment setup | Read-only GUI discovery via PATH/configured suite roots; stage-specific execution checks | GUI path settings, resource/license availability checks and bounded smoke tests |
 
 ## Evidence obtained so far
+
+### Added numerical replay evidence (2026-10-24)
+
+- Internal primary common/LOSO arrays: 28,728 values each, identical; 2,730 network table
+  values identical. All 350 clinical correlations/probabilities independently rechecked.
+- Historical external masked clinical table: 1,400 changes identical. The approved later
+  mask revision is tracked separately, not silently substituted for this historical fixture.
+- Eight gradient configurations: 192 participant measures identical, 128 correlation/P
+  values within 3.4e-16, 32 axis-matching values identical.
+- External unmasked benchmark: 15 identification/density summaries and three healthy-axis
+  comparisons matched within 3.6e-15, including 23/24 common-reference assignments.
+- Repeat-scan and synthetic-void controls: 51 frozen summary values matched within 2e-15.
+  Noise/outcome comparisons are also exported; reliability alone is not clinical validity.
+- Distance, donor-mask, Dice/Mantel and exclusion-cost controls: 86 frozen numeric values
+  matched within 7.2e-15, including the unmasked-baseline Mantel follow-up.
+- Raw/standardized G1, G1–G4, node and edge representation comparisons in both cohorts:
+  50 values matched within 9.5e-15. Ten change-map concordance summaries also matched,
+  including the 20,000-draw within-hemisphere parcel-permutation null.
+- Study void-follow primitive matches the original implementation in 18 sessions. Replaying
+  three explicit historical correction overlays reproduces all 18 adopted masks bitwise.
+  This does not independently approve new masks or longitudinal registrations.
+- The 92-value preoperative volumetric graph implementation matches all six stored cases
+  (552 comparisons). The older surface graph CSV came from now-quarantined matrices and
+  does **not** match the corrected adopted matrices; it is recorded as a lineage issue,
+  not counted as a passing replay. The associated figure/table provenance needs adjudication.
+- Common-reference graph and edge comparators reproduce 3/18 and 16/18 identification.
+- A macOS NextBrain DataLoader workaround runs only in a child process, without modifying
+  the installed tool. Real anatomical processing is in progress, not declared validated.
+- 151 synthetic and regression checks pass locally; see the
+  [numerical-replay validation record](VALIDATION_REPLAY_20261024.md).
+  Earlier evidence below belongs to v0.2.0a1.
 
 - 113 synthetic unit/integration/static-interface tests passed locally on macOS/Python 3.12. They cover source/output separation, byte-integrity guards, DICOM/NIfTI lineage, acquisition guards, geometry, mask approval hashes, label indexing,
   gradient reference integrity, GUI access controls, job execution and cancellation records.
@@ -88,7 +120,8 @@ GUIを主な利用画面とし，CLIを解析エンジンとして維持する�
 
 現在は開発版であり，NIfTI／DICOM入力，撮像条件確認，前処理／FOD，位置合わせ，
 FreeSurfer／NextBrain，atlas／5TT，電極マスク候補，QC後のACT／SIFT2／connectome／G1–G4を連結した．
-研究の最終void-followマスクの完全再現と独立症例での全工程検証は未完了である．
+研究のvoid-follow primitiveと明示的な修正overlayによる18マスクの数値再現を確認した．
+新しい症例の画像QC，独立症例での全工程検証，論文全体の全補足解析・全図の再生成は未完了である．
 研究用の完成版として論文に記載する前に，実データでの全経路検証が必要である．
 
 See [DICOM workflow scope and verification](DICOM_WORKFLOW.md).

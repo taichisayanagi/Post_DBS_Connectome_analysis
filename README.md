@@ -2,7 +2,7 @@
 
 Scripts for Analysis for brains post deep brain stimulation electrode implantation
 
-## DBS Native Connectome — GUI research preview v0.2.0a1
+## DBS Native Connectome — GUI research preview v0.3.0a1
 
 Research software for electrode-aware, native-space structural connectomics.
 **Public research preview with linked processing stages, an image editor and an optional field solver.
@@ -13,15 +13,23 @@ No patient data, brain images, private study matrices or third-party atlases are
 
 **[Current development progress and remaining milestones](docs/STATUS.md)**
 
+**[Paper-analysis numerical replay](docs/PAPER_REPLAY.md)** now covers reviewed cohort
+matrices, common/LOSO gradients, clinical permutation tests, graph/node/edge summaries,
+eight embedding settings, unmasked reference benchmarks and repeat-scan/artifact controls.
+It also includes mask geometry/distance controls and raw/standardized representation audits.
+These are separate from the still-incomplete **raw-image-to-paper validation**.
+
 **[GUI quick start](docs/GUI_QUICKSTART.md)** · **[Electrode editor](docs/ELECTRODE_EDITOR.md)** ·
 **[Electric field / VTA-like simulation](docs/STIMULATION.md)** · **[v0.2.0a1 validation](docs/VALIDATION_20261024.md)**
+· **[v0.3.0a1 numerical-replay validation](docs/VALIDATION_REPLAY_20261024.md)**
 
 **New: [NIfTI / DICOM linked workflow](docs/LINKED_WORKFLOW.md).** The browser accepts raw NIfTI
 or reviewed DICOM series and links DWI/FOD reconstruction, anatomical registration, installed
 FreeSurfer/NextBrain processing, candidate electrode masking, ACT tractography, refitted SIFT2,
 connectome construction and G1–G4. Image QC is a mandatory checkpoint, not an automatic approval.
-CT localization and constrained MRI-void extraction produce reviewable candidates, not a proven
-reproduction of the study's original void-follow algorithm.
+CT localization and constrained MRI-void extraction produce reviewable candidates. A separate
+`study-mask` operation implements the study's original void-follow primitive, with hash-bound
+manual repair replay and shared-mask registration. New masks always require expert image QC.
 
 ## Installation model
 
@@ -64,9 +72,19 @@ The installed tools, atlas resources and acquisition parameters must be configur
   isotropic single-frequency electric field and thresholded VTA-like NIfTI with a local slice viewer.
   The solver is separately installed; no pulse-width/axon activation or clinical setting recommendation.
 - Timestamped, non-overwriting private run folders, hashes and decoded voxel fingerprints.
+- Cohort common and LOSO references; all 175 network measures per endpoint, exact clinical
+  permutation/BH/max-statistic results and a local heatmap/Theil–Sen report.
+- Fixed-cost binary/rank-weighted graphs, explicit unmasked preoperative cortical graph basis,
+  node-strength and raw-edge changes. Endpoint pairs are never silently named as anatomical tracts.
+- All eight declared gradient-setting sensitivities, frozen-output comparison and axis correspondence.
+- Same-day repeat-scan ICC and displacement, synthetic-void numerical controls and noise/outcome
+  comparisons. Unfavourable controls are retained alongside positive findings.
+- Separate unmasked identification/healthy-axis benchmark and an allowlisted replay suite.
+- Source-package hashes and dependency versions in every new provenance record.
 
-**Not implemented/validated:** exact equivalence to the paper's b0 void-following algorithm;
-MRI-only automatic lead localization; automatic longitudinal mask transforms and LOSO orchestration;
+**Not fully validated:** independent raw-image reconstruction through final paper results;
+all supplementary analyses and adopted figure regeneration; expert review of new masks/registrations;
+MRI-only automatic lead localization;
 automated physical-contact/tip/rotation reconstruction; pulse-width/axon activation, multi-lead FEM,
 mesh/domain convergence validation; comprehensive model/license checks; independent end-to-end validation.
 
@@ -145,8 +163,9 @@ SIFT2 reweights remaining streamlines; it does not reconstruct signal lost to me
 
 Use one frozen node table across all compared sessions. Do not hard-code the study's 493-node basis
 for another cohort. Zero-strength cortical nodes cause an error instead of silent per-session deletion.
-Create an appropriate independent/training-only mean connectome as a reference input; the current
-CLI **does not itself build LOSO references**. Each subject's two longitudinal sessions need the
+The `study` operation builds common and patient-specific LOSO references from reviewed cohort
+manifests. The lower-level `reference`/`embed` operations accept an explicit independent/training-only
+reference. Each subject's two longitudinal sessions need the
 same reference. Do not compare axes across separately aligned LOSO templates without further alignment.
 
 ```sh
