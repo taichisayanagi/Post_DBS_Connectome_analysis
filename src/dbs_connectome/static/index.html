@@ -41,7 +41,7 @@ dialog{border:1px solid #8e959e;border-radius:4px;padding:16px;background:var(--
 </style>
 </head>
 <body>
-<header><h1>Post-DBS Connectome</h1><span class="meta">0.1.0.dev0 · Development build · Research use only</span></header>
+<header><h1>Post-DBS Connectome</h1><span class="meta">0.2.0a1 · Research use only · Not for clinical decisions</span></header>
 <main>
 <fieldset><legend>Directories</legend><div class="directory-grid">
 <label for="dataRoot">Input directory</label><input id="dataRoot" type="text" readonly aria-label="Input directory">
@@ -51,7 +51,7 @@ dialog{border:1px solid #8e959e;border-radius:4px;padding:16px;background:var(--
 <nav class="tabs" role="tablist" aria-label="Analysis views">
 <button id="navWorkflow" type="button" role="tab" aria-selected="true" aria-controls="workflow">Image workflow</button>
 <button id="navWorkspace" type="button" role="tab" aria-selected="false" aria-controls="advancedSetup">Advanced steps</button>
-<button id="navQC" type="button" role="tab" aria-selected="false" aria-controls="qcPane" disabled>Mask review</button>
+<button id="navQC" type="button" role="tab" aria-selected="false" aria-controls="qcPane" disabled>QC / results</button>
 </nav>
 <section id="workspace" class="workspace">
 <div id="workflow" class="workflow" role="tabpanel" aria-labelledby="navWorkflow">
@@ -97,7 +97,9 @@ dialog{border:1px solid #8e959e;border-radius:4px;padding:16px;background:var(--
 <fieldset id="anatomySection"><legend>4. Atlas and electrode mask</legend>
 <p class="description">Reconstruction output is linked automatically. Configure trusted installed resources once. FreeSurfer and NextBrain run locally; model files are not bundled. A frozen node TSV defines source labels and cohort-wide node correspondence.</p>
 <div id="anatomyFields"></div>
-<label for="maskMode">Electrode mask source</label><select id="maskMode"><option value="ct_candidate">Automatic CT metal candidates — visual review required</option><option value="centerlines">Reviewed b0-space centerlines</option></select>
+<button id="loadReconstruction" type="button">Load completed reconstruction</button> <button id="openEditor" type="button">CT / MRI electrode editor…</button>
+<p class="meta">The editor combines CT shaft candidates with a constrained MRI void, or accepts manual / virtual centerlines. Correct the candidate on images, then inspect its voxel mask. It never automatically approves QC.</p>
+<label for="maskMode">Electrode mask source</label><select id="maskMode"><option value="electrode_run">Image-editor candidate (recommended)</option><option value="ct_candidate">Automatic CT metal candidates — visual review required</option><option value="centerlines">Reviewed b0-space centerlines</option></select>
 <div class="workflow-grid"><div><label for="ctThreshold">Metal threshold (HU)</label><input id="ctThreshold" type="number" value="2000" min="1000" max="10000"></div><div><label for="expectedLeads">Number of leads</label><select id="expectedLeads"><option value="2">2</option><option value="1">1</option></select></div></div>
 <label class="check"><input id="ctReviewed" type="checkbox"> CT scaling is in Hounsfield units and CT-to-DWI registration has been reviewed.</label>
 <label class="check"><input id="reconReviewed" type="checkbox"> I reviewed DWI preprocessing, rotated b-vectors and anatomical registration.</label>
@@ -107,6 +109,7 @@ dialog{border:1px solid #8e959e;border-radius:4px;padding:16px;background:var(--
 <fieldset id="finishSection"><legend>5. Review and continue to gradients</legend>
 <p class="description">After preparation, the exact atlas, 5TT, mask, FOD and node table are handed to tractography without manually rebuilding file lists. Check the images before approval. Ambiguous CT candidates or missing nodes stop processing.</p>
 <div id="finishFields"></div><label for="workflowReviewer">Reviewer identifier</label><input id="workflowReviewer"><div id="workflowChecks"></div>
+<button id="loadPrepared" type="button">Load completed preparation</button> <button id="adoptElectrode" type="button">Replace mask with editor candidate (new run)</button>
 <button id="approvePrepared" type="button">Record image QC approval</button>
 <label for="streamlineCount">Requested streamlines</label><input id="streamlineCount" type="number" value="1000000" min="1000" max="10000000">
 <p class="meta">The default is one million. A reduced count is for smoke testing only. Without a training or independent gradient reference, outputs are single-session unaligned G1–G4 and cannot be used directly for longitudinal comparison.</p>
@@ -114,7 +117,35 @@ dialog{border:1px solid #8e959e;border-radius:4px;padding:16px;background:var(--
 <button id="planFinish" type="button">Check / save continuation plan</button> <button id="runFinish" type="button" class="primary">Run connectome and gradients</button>
 </fieldset>
 <p id="workflowStatus" class="workflow-status" role="status">Select NIfTI files or a DICOM folder to begin.</p><p id="workflowError" class="error" role="alert"></p>
-<div class="route-limit"><strong>Development boundary</strong> — These linked adapters are not independently validated end to end on patient data. The CT/centerline tube candidate is not the study's void-follow algorithm. MRI-only automatic lead localization and automatic longitudinal mask registration are not implemented. QC is never approved automatically. Existing registered union masks can be used through Advanced steps.</div>
+<fieldset><legend>6. Optional electric field / VTA-like simulation</legend>
+<p class="description">Separate OSS-DBS finite-element solver. Single-lead, single-frequency, isotropic quasi-static model with a grounded spherical outer boundary. This is NOT the electrode artifact mask, a pulse-width-dependent axon activation model, or a programming recommendation.</p>
+<div id="stimFields"></div><button id="makeMaterial" type="button">Make tissue-label candidate from loaded 5TT</button>
+<p class="meta">Required labels: 0 unknown, 1 CSF, 2 white matter, 3 gray matter, 4 blood. Raw T1/T2, atlas labels and exclusion masks are not acceptable tissue maps. Inspect the candidate separately before use. Set OSSDBS_PYTHON to the solver environment before starting this application.</p>
+<div class="workflow-grid"><div><label for="stimModel">Electrode model (not IPG)</label><select id="stimModel"><option>Medtronic3389</option><option>Medtronic3387</option><option>Medtronic3391</option><option>MedtronicSenSightB33005</option><option>MedtronicSenSightB33015</option><option>BostonScientificVercise</option><option>BostonScientificVerciseDirected</option><option>AbbottStJudeDirected6172</option><option>AbbottStJudeDirected6173</option></select></div><div><label for="stimControl">Amplitude units</label><select id="stimControl"><option value="voltage">Voltage (V)</option><option value="current">Current (mA)</option></select></div></div>
+<div id="stimCoordinates" class="workflow-grid"></div>
+<label for="stimAmplitudes">Contact amplitudes in OSS-DBS 1-based order (comma-separated)</label><input id="stimAmplitudes" type="text" placeholder="One value per contact; 0 = inactive floating. Verify mapping from clinical contact numbers.">
+<div id="stimNumbers" class="workflow-grid"></div>
+<label for="stimMesh">Mesh hypothesis</label><select id="stimMesh"><option>Moderate</option><option>Coarse</option><option>Fine</option></select>
+<label class="check"><input id="stimTissues" type="checkbox"> I reviewed tissue labels, coverage and registration in the electrode coordinate system.</label>
+<label class="check"><input id="stimTip" type="checkbox"> The physical tip and shaft direction are independently verified; they are not inferred from a metal/void endpoint.</label>
+<label class="check"><input id="stimContacts" type="checkbox"> I verified the implanted lead model, OSS-DBS contact order and voltage/current units.</label>
+<label class="check"><input id="stimRotation" type="checkbox"> Directional-lead rotation was independently verified (required for directional leads).</label>
+<label class="check"><input id="stimApproximation" type="checkbox"> I accept the single-frequency thresholded-field approximation, absent pulse-width/axon modeling, and the need for mesh/domain convergence testing.</label>
+<label class="check"><input id="stimConsent" type="checkbox"> Approve FEM computation using the selected CPU thread count.</label>
+<button id="planStim" type="button">Validate / save simulation plan</button> <button id="runStim" type="button">Run external OSS-DBS</button>
+<pre id="stimResult" class="log">No simulation run.</pre>
+</fieldset>
+<fieldset><legend>7. Training reference and longitudinal G1–G4</legend>
+<p class="description">Compare two visits only on an identical frozen node basis and common reference. Review the longitudinal exclusion strategy before comparison; this module does not register masks between visits. G3/G4 stability is not assumed.</p>
+<div id="longitudinalFields"></div>
+<label for="cohortRuns">Training / independent connectome-run directories (one per line)</label><textarea id="cohortRuns" rows="4" style="width:100%;font:13px monospace"></textarea>
+<label class="check"><input id="trainingReviewed" type="checkbox"> I reviewed membership, duplicate scans and potential patient/visit leakage. Raw-weight arithmetic mean is intended.</label>
+<button id="buildReference" type="button">Build common reference</button>
+<label class="check"><input id="pairingReviewed" type="checkbox"> I confirmed same patient, first/second visit order, clinical timepoints, common nodes and comparable electrode exclusion.</label>
+<button id="runLongitudinal" type="button">Align both visits and calculate G1–G4 / eccentricity changes</button>
+<pre id="longitudinalResult" class="log">No longitudinal comparison.</pre>
+</fieldset>
+<div class="route-limit"><strong>Development boundary</strong> — These linked adapters are not independently validated end to end on patient data. The CT/MRI candidate algorithm is not the study's original void-follow algorithm. MRI-only localization requires manual shaft seeds. Automatic longitudinal mask registration is not implemented. QC is never approved automatically. SIFT2 reweights retained streamlines; it does not repair missing MRI signal.</div>
 </div>
 <div id="advancedSetup" class="setup hidden" role="tabpanel" aria-labelledby="navWorkspace">
 <fieldset><legend>Processing step</legend>
@@ -147,8 +178,8 @@ dialog{border:1px solid #8e959e;border-radius:4px;padding:16px;background:var(--
 <div class="statusbar"><span>Local processing · One job at a time</span><span>End-to-end DICOM reconstruction is not yet validated</span></div>
 </section>
 <section id="qcPane" class="hidden" role="tabpanel" aria-labelledby="navQC">
-<div class="qc-toolbar"><p>Display only. Record QC approval separately after registration and atlas review.</p><button id="back" type="button">Back to processing</button></div>
-<iframe id="qcFrame" title="Electrode mask review" sandbox="allow-scripts allow-same-origin"></iframe>
+<div class="qc-toolbar"><p>Local research report. Viewing a report never records image QC approval.</p><button id="back" type="button">Back to processing</button></div>
+<iframe id="qcFrame" title="Local QC or analysis report" sandbox="allow-scripts allow-same-origin"></iframe>
 </section>
 </main>
 <dialog id="picker" aria-labelledby="pickerTitle"><h2 id="pickerTitle">Select input</h2>
@@ -161,6 +192,13 @@ dialog{border:1px solid #8e959e;border-radius:4px;padding:16px;background:var(--
 const token=new URLSearchParams(location.search).get('token')||sessionStorage.getItem('dbs-token')||'';
 sessionStorage.setItem('dbs-token',token);history.replaceState({},'',location.pathname);
 const stages={
+'cohort-reference':{title:'Build training reference',group:'Gradients',fields:['nodes'],guided:true},
+longitudinal:{title:'Paired longitudinal gradients',group:'Gradients',fields:['first_connectome_run','second_connectome_run','reference_run','nodes'],guided:true},
+results:{title:'Inspect connectome / G1–G4',group:'Gradients',fields:['gradient_run','nodes','connectome_run'],hint:'View coordinates and export CSV. A selected matrix must match the exact embedding input hash. No motor or cognitive axis is assumed.'},
+simulate:{title:'Electric field / VTA-like simulation',group:'Stimulation',fields:['segmentation'],guided:true},
+material:{title:'Prepare tissue labels for FEM',group:'Stimulation',fields:['reference','five_tissue'],guided:true},
+electrode:{title:'CT / MRI electrode editor',group:'Electrode mask',fields:['reference'],guided:true},
+'adopt-electrode':{title:'Adopt corrected electrode mask',group:'Electrode mask',fields:['prepared_run','electrode_run'],guided:true},
 environment:{title:'Check installed software',group:'Import',fields:[],hint:'Read-only discovery. No installations, license checks or MATLAB launch.'},
 inventory:{title:'Inventory DICOM',group:'Import',fields:['dicom_dir'],hint:'Read image headers and group by Series UID. For guided role assignment use the DICOM workflow tab.'},
 'import-session':{title:'Import reviewed series',group:'Import',fields:['inventory_run'],guided:true,hint:'Use DICOM workflow to assign and confirm series roles.'},
@@ -180,7 +218,7 @@ fingerprint:{title:'Image fingerprint',group:'Utilities',fields:['image'],hint:'
 };
 const gradientMethod=[['Embedding','Diffusion maps · Normalized angle'],['Connectivity','log1p · 75% row sparsity'],['Components','10 computed · G1–G4 retained'],['Parameters','α = 0.05 · t = 0'],['Hemispheres','Estimated separately']];
 stages.reference.method=gradientMethod;stages.embed.method=gradientMethod;
-const labels={inventory_run:'DICOM inventory run',import_run:'Converted session run',dicom_dir:'DICOM series',reference:'b0 image',mask:'Electrode mask',atlas:'Native atlas',centerlines:'Reviewed centerlines',config:'Prepared session file',matrix:'Connectome matrix',nodes:'Node table',reference_run:'Gradient reference run',connectome_run:'Masked-connectome run¹',first_run:'First embedding run',second_run:'Second embedding run',image:'NIfTI image'};
+const labels={gradient_run:'Completed gradient run',inventory_run:'DICOM inventory run',import_run:'Converted session run',dicom_dir:'DICOM series',reference:'b0 image',mask:'Electrode mask',atlas:'Native atlas',centerlines:'Reviewed centerlines',config:'Prepared session file',matrix:'Connectome matrix',nodes:'Node table',reference_run:'Gradient reference run',connectome_run:'Masked-connectome run¹',first_run:'First embedding run',second_run:'Second embedding run',image:'NIfTI image'};
 const checks={registration:'CT / anatomical MRI / DWI registration',void_coverage:'Signal-void coverage',full_shaft:'Full electrode-shaft coverage',spurious_components:'Spurious components excluded',atlas_alignment:'Native atlas alignment'};
 const $=id=>document.getElementById(id);let dataRoot='',browseTarget=null,currentDirectory='',currentReport=null,selectedJob=null,jobsState=[];
 const inputCache={};
@@ -207,8 +245,8 @@ function renderLog(){const job=jobsState.find(j=>j.id===selectedJob);$('jobLog')
 function renderJobs(){
  const target=$('jobs');target.replaceChildren();if(!jobsState.length){const row=target.insertRow(),cell=row.insertCell();cell.colSpan=4;cell.className='empty';cell.textContent='No jobs in this session';return}
  for(const job of jobsState){const row=target.insertRow();row.className='job-row';row.dataset.job=job.id;const operation=row.insertCell(),button=document.createElement('button');button.className='job-name';button.textContent=stages[job.stage]?.title||job.stage;button.title=job.id;button.onclick=()=>{selectedJob=job.id;renderLog()};operation.append(button);const state=row.insertCell();state.className='state '+job.status;state.textContent=job.status==='planned'?'Plan only':job.status.charAt(0).toUpperCase()+job.status.slice(1);const elapsed=row.insertCell();elapsed.className='elapsed';elapsed.textContent=job.elapsed_seconds.toFixed(1)+' s';const actions=row.insertCell();
-  if(job.report){const review=document.createElement('button');review.textContent='Review';review.setAttribute('aria-label','Review mask from '+job.id.slice(0,8));review.onclick=()=>showReport(job.id);actions.append(review)}
-  if(['inventory','import-session','import-nifti','environment','reconstruct','prepare-session','finish-session','approve'].includes(job.stage)&&['completed','needs_qc'].includes(job.status)){const open=document.createElement('button');open.textContent='Open result';open.onclick=async()=>{showWorkflow();handledResults.delete(job.id);if(job.stage==='environment')environmentJob=job.id;else workflowJob=job.id;await updateWorkflow()};actions.append(open)}
+  if(job.report){const review=document.createElement('button');review.textContent='View report';review.setAttribute('aria-label','View report from '+job.id.slice(0,8));review.onclick=()=>showReport(job.id);actions.append(review)}
+  if(['inventory','import-session','import-nifti','environment','reconstruct','prepare-session','adopt-electrode','electrode','finish-session','approve','material','simulate','cohort-reference','longitudinal'].includes(job.stage)&&['completed','needs_qc'].includes(job.status)){const open=document.createElement('button');open.textContent='Open result';open.onclick=async()=>{showWorkflow();handledResults.delete(job.id);if(job.stage==='environment')environmentJob=job.id;else workflowJob=job.id;await updateWorkflow()};actions.append(open)}
   if(['queued','running'].includes(job.status)){const cancel=document.createElement('button');cancel.textContent='Cancel';cancel.onclick=async()=>{try{await api('/api/cancel',{id:job.id});await refresh()}catch(error){$('error').textContent=error.message}};actions.append(cancel)}
  }
  renderLog();
@@ -234,7 +272,7 @@ function submitReconstruction(execute){workflowSubmit({stage:'reconstruct',input
 $('planReconstruction').onclick=()=>submitReconstruction(false);$('runReconstruction').onclick=()=>submitReconstruction(true);
 for(const id of ['peDirection','readoutSeconds','metadataReason','distortionMode','fodModel','degibbsAxes','workflowThreads']){$(id).addEventListener('change',()=>{$('acquisitionReviewed').checked=false;$('reconstructionConsent').checked=false})}
 function renderEnvironment(data){$('environmentResults').replaceChildren();const report=data.result;const intro=document.createElement('p');intro.textContent=report.notice;$('environmentResults').append(intro);for(const stage of report.stages){const line=document.createElement('p');const missing=stage.tools.filter(t=>!t.path).map(t=>t.tool);line.textContent=`${stage.stage}: ${missing.length?'not found: '+missing.join(', '):'commands detected (not tested)'}`;$('environmentResults').append(line)}const extra=document.createElement('p');extra.textContent=`FSL eddy: ${report.eddy_candidates.join(', ')||'not found'} · Resources not validated: ${report.resources_not_validated.join(', ')}`;$('environmentResults').append(extra);$('environmentDetails').open=true}
-let preparedData=null;
+let preparedData=null,reconstructionData=null;
 function pathField(parent,id,labelText,isDirectory=false){const row=document.createElement('div');row.className='field';const label=document.createElement('label');label.htmlFor=id;label.textContent=labelText;const controls=document.createElement('div');controls.className='inputrow';const input=document.createElement('input');input.id=id;input.type='text';const button=document.createElement('button');button.type='button';button.textContent='Browse…';button.onclick=()=>openPicker(input,isDirectory);controls.append(input,button);row.append(label,controls);$(parent).append(row);return input}
 pathField('niftiFields','niftiRoot','Patient source folder',true);
 for(const [role,label]of Object.entries(roleNames))pathField('niftiFields','nifti-'+role,label);
@@ -244,14 +282,54 @@ pathField('anatomyFields','reconstructionRun','Completed reconstruction run',tru
 const resourceLabels={freesurfer_home:'Trusted FreeSurfer installation',fsaverage:'Installed fsaverage directory',lh_annotation:'Left Schaefer400 7-network annotation',rh_annotation:'Right Schaefer400 7-network annotation',nextbrain_atlas:'Installed NextBrain full-atlas directory',nodes:'Frozen node TSV including source_label'};
 for(const [key,label]of Object.entries(resourceLabels))pathField('anatomyFields','resource-'+key,label,['freesurfer_home','fsaverage','nextbrain_atlas'].includes(key));
 pathField('anatomyFields','workflowCenterlines','Reviewed centerlines JSON (alternative to CT)');
-function submitAnatomy(execute){const resources={};for(const key of Object.keys(resourceLabels))resources[key]=$('resource-'+key).value;workflowSubmit({stage:'prepare-session',inputs:{reconstruction_run:$('reconstructionRun').value},settings:{resources,reconstruction_reviewed:$('reconReviewed').checked,mask_mode:$('maskMode').value,centerlines:$('workflowCenterlines').value,ct_hu_reviewed:$('ctReviewed').checked,ct_threshold_hu:Number($('ctThreshold').value),expected_leads:Number($('expectedLeads').value)},threads:Number($('workflowThreads').value),execute,approve_compute:$('anatomyConsent').checked})}
+pathField('anatomyFields','workflowElectrode','Image-editor candidate run',true);
+function submitAnatomy(execute){const resources={};for(const key of Object.keys(resourceLabels))resources[key]=$('resource-'+key).value;workflowSubmit({stage:'prepare-session',inputs:{reconstruction_run:$('reconstructionRun').value},settings:{resources,reconstruction_reviewed:$('reconReviewed').checked,mask_mode:$('maskMode').value,centerlines:$('workflowCenterlines').value,electrode_run:$('workflowElectrode').value,ct_hu_reviewed:$('ctReviewed').checked,ct_threshold_hu:Number($('ctThreshold').value),expected_leads:Number($('expectedLeads').value)},threads:Number($('workflowThreads').value),execute,approve_compute:$('anatomyConsent').checked})}
 $('planAnatomy').onclick=()=>submitAnatomy(false);$('runAnatomy').onclick=()=>submitAnatomy(true);
 for(const [key,label]of [['preparedRun','Prepared atlas / mask run'],['workflowApproval','QC approval JSON'],['workflowReference','Training / independent gradient reference run (optional)']])pathField('finishFields',key,label,key!=='workflowApproval');
 for(const [key,text]of Object.entries(checks)){const label=document.createElement('label');label.className='check';const input=document.createElement('input');input.type='checkbox';input.value=key;label.append(input,document.createTextNode(' '+text));$('workflowChecks').append(label)}
 $('approvePrepared').onclick=()=>{if(!preparedData){$('workflowError').textContent='Open a completed preparation result before approving its exact images.';return}workflowSubmit({stage:'approve',inputs:{reference:preparedData.reference,mask:preparedData.mask,atlas:preparedData.atlas},reviewer:$('workflowReviewer').value,checks:Array.from($('workflowChecks').querySelectorAll('input:checked')).map(x=>x.value)})};
 function submitFinish(execute){workflowSubmit({stage:'finish-session',inputs:{prepared_run:$('preparedRun').value,approval:$('workflowApproval').value,reference_run:$('workflowReference').value},threads:Number($('workflowThreads').value),streamlines:Number($('streamlineCount').value),execute,approve_compute:$('finishConsent').checked})}
 $('planFinish').onclick=()=>submitFinish(false);$('runFinish').onclick=()=>submitFinish(true);
-async function updateWorkflow(){for(const id of [environmentJob,workflowJob]){if(!id)continue;const job=jobsState.find(j=>j.id===id);if(!job)continue;if(id===workflowJob)$('workflowStatus').textContent=`${stages[job.stage]?.title||job.stage}: ${job.current_step} · ${job.elapsed_seconds}s${job.result_run?'\n'+job.result_run:''}`;if(handledResults.has(id))continue;if(['failed','cancelled'].includes(job.status)){handledResults.add(id);if(id===workflowJob)$('workflowError').textContent=job.logs.slice(-5).join('\n')||job.status;continue}if(job.status==='planned'){handledResults.add(id);$('workflowStatus').textContent='Plan saved. MRI processing has NOT run.\n'+job.result_run;continue}if(!['completed','needs_qc'].includes(job.status))continue;const data=await api('/api/result?job='+encodeURIComponent(id));handledResults.add(id);if(job.stage==='inventory')renderInventory(data);if(['import-session','import-nifti'].includes(job.stage))renderConverted(data);if(job.stage==='environment')renderEnvironment(data);if(job.stage==='reconstruct'){$('reconstructionRun').value=data.run;$('workflowStatus').textContent='Reconstruction finished. Review DWI and registration, then configure atlas and mask preparation.';}if(job.stage==='prepare-session'){preparedData=data.result.outputs;$('preparedRun').value=data.run;$('workflowApproval').value='';$('workflowChecks').querySelectorAll('input').forEach(x=>x.checked=false);$('workflowStatus').textContent=data.result.next+(data.result.missing_dwi_nodes.length?' Missing DWI atlas nodes: '+data.result.missing_dwi_nodes.join(', '):'');}if(job.stage==='approve')$('workflowApproval').value=data.run+'/approval.json';if(job.stage==='finish-session')$('workflowStatus').textContent='Connectome and gradient computation finished. Alignment: '+data.result.alignment+'\n'+data.result.gradient_run;}}
+function receivePrepared(data){preparedData=data.result.outputs;$('preparedRun').value=data.run;$('workflowApproval').value='';$('finishConsent').checked=false;$('workflowChecks').querySelectorAll('input').forEach(x=>x.checked=false);$('workflowStatus').textContent=data.result.next+(data.result.missing_dwi_nodes.length?' Missing DWI atlas nodes: '+data.result.missing_dwi_nodes.join(', '):'')}
+$('loadReconstruction').onclick=async()=>{try{const data=await api('/api/workflow-load',{run:$('reconstructionRun').value,stage:'reconstruct'});reconstructionData=data.result;$('workflowStatus').textContent='Reconstruction loaded. Open the electrode editor to inspect registered CT/MRI.'}catch(e){$('workflowError').textContent=e.message}};
+$('loadPrepared').onclick=async()=>{try{receivePrepared(await api('/api/workflow-load',{run:$('preparedRun').value,stage:'prepare-session'}))}catch(e){$('workflowError').textContent=e.message}};
+$('openEditor').onclick=()=>{const r=reconstructionData?.outputs||{};sessionStorage.setItem('dbs-editor-context',JSON.stringify({reference:r.reference||preparedData?.reference||'',CT:r.ct_in_b0||'',MRI:r.reference||preparedData?.reference||'',Brain:r.brain_mask||''}));window.open('/editor?token='+encodeURIComponent(token),'dbs-electrode-editor')};
+window.addEventListener('message',event=>{if(event.origin!==location.origin||event.data?.type!=='dbs-electrode-selected')return;$('workflowElectrode').value=event.data.run;$('workflowCenterlines').value=event.data.result.outputs.centerlines;$('maskMode').value='electrode_run';$('workflowStatus').textContent='Editor candidate selected. Use it for anatomy preparation, or replace the mask in an existing preparation. QC is still required.'});
+$('adoptElectrode').onclick=()=>workflowSubmit({stage:'adopt-electrode',inputs:{prepared_run:$('preparedRun').value,electrode_run:$('workflowElectrode').value}});
+pathField('stimFields','stimSegmentation','Reviewed tissue segmentation');
+for(const [id,label]of [['tip','Physical tip RAS mm'],['shaft','Shaft point RAS mm']]){const box=document.createElement('div'),text=document.createElement('label'),input=document.createElement('input');text.htmlFor='stim-'+id;text.textContent=label;input.id='stim-'+id;input.type='text';input.placeholder='R, A, S';box.append(text,input);$('stimCoordinates').append(box)}
+const stimNumbers={rotation_deg:['Axial rotation (degrees)',0],threshold_v_per_mm:['VTA-like field threshold (V/mm)',.2],field_frequency_hz:['Field evaluation frequency (Hz; NOT pulse rate)',1000],domain_mm:['Spherical domain diameter (mm)',60],lattice_spacing_mm:['Field sampling step (mm)',.5],lattice_extent_mm:['Field sampling extent (mm)',20]};
+for(const [id,[label,value]]of Object.entries(stimNumbers)){const box=document.createElement('div'),text=document.createElement('label'),input=document.createElement('input');text.htmlFor='stim-'+id;text.textContent=label;input.id='stim-'+id;input.type='number';input.step='any';input.value=value;box.append(text,input);$('stimNumbers').append(box)}
+$('makeMaterial').onclick=()=>{if(!preparedData){$('workflowError').textContent='Load a completed preparation first.';return}workflowSubmit({stage:'material',inputs:{reference:preparedData.reference,five_tissue:preparedData.five_tissue}})};
+function parseNumbers(text){if(!text.trim())throw Error('Coordinate/contact fields cannot be empty');const parts=text.split(',').map(s=>s.trim());if(parts.some(s=>!s))throw Error('Missing coordinate/contact value');const result=parts.map(Number);if(!result.every(Number.isFinite))throw Error('Use finite comma-separated numbers');return result}
+function submitStim(execute){try{const settings={model:$('stimModel').value,control:$('stimControl').value,tip_ras_mm:parseNumbers($('stim-tip').value),shaft_ras_mm:parseNumbers($('stim-shaft').value),contact_amplitudes:parseNumbers($('stimAmplitudes').value),mesh:$('stimMesh').value,segmentation_reviewed:$('stimTissues').checked,physical_tip_reviewed:$('stimTip').checked,model_contact_numbering_reviewed:$('stimContacts').checked,rotation_reviewed:$('stimRotation').checked,approximation_accepted:$('stimApproximation').checked};for(const id of Object.keys(stimNumbers))settings[id]=Number($('stim-'+id).value);workflowSubmit({stage:'simulate',inputs:{segmentation:$('stimSegmentation').value},settings,threads:Number($('workflowThreads').value),execute,approve_compute:$('stimConsent').checked})}catch(e){$('workflowError').textContent=e.message}}
+$('planStim').onclick=()=>submitStim(false);$('runStim').onclick=()=>submitStim(true);
+for(const [id,label,isDir]of [['longNodes','Common frozen node TSV',false],['longReference','Common gradient reference run',true],['longFirst','First visit masked-connectome run',true],['longSecond','Second visit masked-connectome run',true]])pathField('longitudinalFields',id,label,isDir);
+$('buildReference').onclick=()=>workflowSubmit({stage:'cohort-reference',inputs:{nodes:$('longNodes').value},selection:{runs:$('cohortRuns').value.split('\n').map(x=>x.trim()).filter(Boolean),training_reviewed:$('trainingReviewed').checked,normalization:'none'}});
+$('runLongitudinal').onclick=()=>workflowSubmit({stage:'longitudinal',inputs:{nodes:$('longNodes').value,reference_run:$('longReference').value,first_connectome_run:$('longFirst').value,second_connectome_run:$('longSecond').value},pairing_reviewed:$('pairingReviewed').checked});
+async function updateWorkflow(){
+ for(const id of [environmentJob,workflowJob]){
+  if(!id)continue;const job=jobsState.find(j=>j.id===id);if(!job)continue;
+  if(id===workflowJob)$('workflowStatus').textContent=`${stages[job.stage]?.title||job.stage}: ${job.current_step} · ${job.elapsed_seconds}s${job.result_run?'\n'+job.result_run:''}`;
+  if(handledResults.has(id))continue;
+  if(['failed','cancelled'].includes(job.status)){handledResults.add(id);if(id===workflowJob)$('workflowError').textContent=job.logs.slice(-5).join('\n')||job.status;continue}
+  if(job.status==='planned'){handledResults.add(id);$('workflowStatus').textContent='Plan saved. Processing has NOT run.\n'+job.result_run;continue}
+  if(!['completed','needs_qc'].includes(job.status))continue;
+  const data=await api('/api/result?job='+encodeURIComponent(id));handledResults.add(id);
+  if(job.stage==='inventory')renderInventory(data);
+  if(['import-session','import-nifti'].includes(job.stage))renderConverted(data);
+  if(job.stage==='environment')renderEnvironment(data);
+  if(job.stage==='reconstruct'){reconstructionData=data.result;$('reconstructionRun').value=data.run;$('workflowStatus').textContent='Reconstruction finished. Review DWI and registration, then open the electrode editor.';}
+  if(['prepare-session','adopt-electrode'].includes(job.stage))receivePrepared(data);
+  if(job.stage==='electrode'){$('workflowElectrode').value=data.run;$('workflowCenterlines').value=data.result.outputs.centerlines;$('maskMode').value='electrode_run';}
+  if(job.stage==='approve')$('workflowApproval').value=data.run+'/approval.json';
+  if(job.stage==='finish-session')$('workflowStatus').textContent='Connectome and gradient computation finished. Alignment: '+data.result.alignment+'\n'+data.result.gradient_run;
+  if(job.stage==='material'){$('stimSegmentation').value=data.result.segmentation;$('stimTissues').checked=false;$('stimResult').textContent=data.result.warning+'\n'+data.result.segmentation;}
+  if(job.stage==='simulate')$('stimResult').textContent=JSON.stringify(data.result,null,2);
+  if(job.stage==='cohort-reference'){$('longReference').value=data.result.reference_run;$('workflowReference').value=data.result.reference_run;$('longitudinalResult').textContent=JSON.stringify(data.result,null,2);}
+  if(job.stage==='longitudinal')$('longitudinalResult').textContent=JSON.stringify(data.result,null,2);
+ }
+}
 refresh();setInterval(refresh,3000);
 </script>
 </body>

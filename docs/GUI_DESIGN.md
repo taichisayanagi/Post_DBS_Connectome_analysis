@@ -18,5 +18,6 @@ This is a separate application, not an official Lead-DBS component or endorsed e
 - Require the same input checks, mask-lineage validation and execution consent as the CLI.
 - Keep patient-derived reports and computation local. Do not host this analysis server publicly.
 
-This interface update changes presentation only. It does not implement the missing reconstruction
-stages or establish end-to-end validity.
+The v0.2.0a1 interface also adds registered CT/MRI editing, immutable mask replacement, paired gradients
+and optional field simulation. The editor prioritizes three image planes and explicit RAS coordinates;
+field and gradient reports use separate viewers. These additions do not establish end-to-end validity.

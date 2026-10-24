@@ -29,9 +29,11 @@ the dependency changes; prefer an environment dedicated to this application.
 Currently, DICOM inventory uses pydicom and conversion invokes dcm2niix. The new reconstruction
 adapter calls MRtrix3, FSL eddy (optional topup) and ANTs. Prepared-input connectome execution invokes
 MRtrix3, and gradient/QC operations use the Python dependencies declared in `pyproject.toml`.
-FreeSurfer, NextBrain, MATLAB, SPM12 and other study tools will be connected as the corresponding
-reconstruction stages are implemented and verified. Installation alone does **not** make those
-currently missing stages operational. Gradient-only analysis should not require MATLAB or FreeSurfer.
+FreeSurfer surface reconstruction/mapping and NextBrain segmentation adapters are linked; the complete
+patient path remains unvalidated. MATLAB/SPM12 are only needed by an explicitly selected supported
+route, not automatically required for gradients. Installation alone does **not** prove interoperability.
+Optional stimulation uses a separate OSS-DBS environment selected through `OSSDBS_PYTHON`.
+See [the tested adapter and limits](STIMULATION.md). None of its binaries/dependencies are bundled.
 
 Before implementing each upstream route, derive its exact dependency inventory from the study
 scripts and execution records. Record required commands, MATLAB functions/toolboxes, models,

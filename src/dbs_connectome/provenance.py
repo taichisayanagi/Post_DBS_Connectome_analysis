@@ -67,7 +67,7 @@ def record(out, stage, inputs, parameters, outputs, status="completed"):
         versions[name] = importlib.metadata.version(name)
     item = {
         "schema_version": 1,
-        "software_version": "0.1.0.dev0",
+        "software_version": "0.2.0a1",
         "utc": datetime.now(timezone.utc).isoformat(),
         "stage": stage,
         "status": status,

@@ -18,7 +18,7 @@
 
 ## 初期実装の境界
 
-現在のv0.1.0.dev0はNIfTI／DICOM入力から前処理，FreeSurfer／NextBrain，atlas／5TT，電極マスク候補，QC後のACT／SIFT2／connectome／gradientまでの工程を連結する．入力・撮像条件・共通node基盤・画像QCには利用者の確認が必要である．CT候補またはcenterlineからの管状マスクは，研究で最終採用したvoid-followアルゴリズムと同一ではない．独立症例での全工程検証と研究結果の完全再現は未完了である．
+現在のv0.2.0a1はNIfTI／DICOM入力から前処理，FreeSurfer／NextBrain，atlas／5TT，電極マスク候補，QC後のACT／SIFT2／connectome／gradientまでの工程を連結する．CT候補と制約付きMRI voidの統合，画像上の手動修正，共通参照を用いた縦断G1–G4，外部OSS-DBSによる電場・VTA相当の近似計算を追加した．入力・撮像条件・共通node基盤・画像QCには利用者の確認が必要である．新しいCT／MRI候補算法は，研究で最終採用したvoid-followアルゴリズムと同一ではない．独立症例での全工程検証と研究結果の完全再現は未完了である．刺激モデルは単一周波数・等方性の電場閾値モデルであり，パルス幅や軸索活性化を再現しない．
 
 ## 科学的な貢献の位置づけ
 

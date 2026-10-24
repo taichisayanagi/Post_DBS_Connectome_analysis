@@ -20,6 +20,10 @@ from .masks import REVIEW_ITEMS
 from .provenance import new_run, read_json, require_separate_output, write_json
 
 FIELDS = {
+    "cohort-reference": ["nodes"], "longitudinal": ["first_connectome_run", "second_connectome_run", "reference_run", "nodes"],
+    "results": ["gradient_run", "nodes"],
+    "simulate": ["segmentation"], "material": ["reference", "five_tissue"],
+    "electrode": ["reference"], "adopt-electrode": ["prepared_run", "electrode_run"],
     "environment": [], "inventory": ["dicom_dir"], "import-session": ["inventory_run"],
     "reconstruct": ["import_run"],
     "import-nifti": [], "prepare-session": ["reconstruction_run"],
@@ -65,11 +69,43 @@ class JobManager:
             if not isinstance(value, str) or not value.strip():
                 raise ValueError("Missing input: " + field)
             path = self.resolve_input(value)
-            is_directory = field in ("dicom_dir", "reference_run", "first_run", "second_run", "inventory_run", "import_run", "reconstruction_run", "prepared_run")
+            is_directory = field in ("dicom_dir", "reference_run", "first_run", "second_run", "inventory_run", "import_run", "reconstruction_run", "prepared_run", "electrode_run", "gradient_run", "first_connectome_run", "second_connectome_run")
             if path.is_dir() != is_directory:
                 raise ValueError("Wrong file/directory type: " + field)
             args += ["--" + field.replace("_", "-"), str(path)]
-        if stage == "embed" and supplied.get("connectome_run", "").strip():
+        if stage == "cohort-reference":
+            selection = body.get("selection", {})
+            if not isinstance(selection, dict) or not isinstance(selection.get("runs"), list):
+                raise ValueError("Select completed training connectome runs")
+            for path in selection["runs"]:
+                self.resolve_input(path)
+            args += ["--selection", str(job_root / "selection_input.json")]
+        if stage == "longitudinal":
+            if body.get("pairing_reviewed") is not True:
+                raise ValueError("Confirm patient/visit/exclusion pairing first")
+            args += ["--pairing-reviewed"]
+        if stage == "electrode":
+            if not isinstance(body.get("electrode"), dict):
+                raise ValueError("Use the electrode editor to define image-bound geometry")
+            for field in ("ct", "mri", "brain_mask"):
+                if supplied.get(field):
+                    path = self.resolve_input(supplied[field])
+                    if not path.is_file():
+                        raise ValueError("Expected an image file: " + field)
+                    args += ["--" + field.replace("_", "-"), str(path)]
+            args += ["--spec", str(job_root / "electrode_input.json")]
+        if stage == "simulate":
+            if not isinstance(body.get("settings"), dict):
+                raise ValueError("Configure the stimulation model explicitly")
+            args += ["--settings", str(job_root / "settings_input.json")]
+        if stage == "adopt-electrode":
+            from .workflow import prepared_paths
+            from .electrodes import verified_electrode
+            paths = prepared_paths(self.resolve_input(supplied["prepared_run"]))
+            candidate = verified_electrode(self.resolve_input(supplied["electrode_run"]), paths["reference"])
+            for path in [*paths.values(), *candidate["outputs"].values()]:
+                self.resolve_input(path)
+        if stage in ("embed", "results") and supplied.get("connectome_run", "").strip():
             lineage = self.resolve_input(supplied["connectome_run"])
             if not lineage.is_dir():
                 raise ValueError("Connectome run must be a directory")
@@ -114,6 +150,14 @@ class JobManager:
                 raise ValueError("Configure anatomical resources and mask settings")
             if settings.get("centerlines"):
                 self.resolve_input(settings["centerlines"])
+            if settings.get("electrode_run"):
+                from .electrodes import verified_electrode
+                candidate_run = self.resolve_input(settings["electrode_run"])
+                candidate = read_json(candidate_run / "electrode_result.json")
+                reference = self.resolve_input(candidate["reference"])
+                verified_electrode(candidate_run, reference)
+                for path in candidate["outputs"].values():
+                    self.resolve_input(path)
             args += ["--settings", str(job_root / "settings_input.json")]
         if stage == "finish-session":
             from .workflow import prepared_paths
@@ -132,12 +176,12 @@ class JobManager:
                 if not isinstance(value, str):
                     raise ValueError("Prepared config paths must be strings")
                 self.resolve_input(config_path.parent / value)
-        if stage in ("connectome", "reconstruct", "prepare-session", "finish-session"):
+        if stage in ("connectome", "reconstruct", "prepare-session", "finish-session", "simulate"):
             threads = body.get("threads")
             if not isinstance(threads, int) or isinstance(threads, bool) or not 1 <= threads <= 128:
                 raise ValueError("Select an explicit thread count between 1 and 128")
             args += ["--threads", str(threads)]
-        if stage in ("convert", "connectome", "import-session", "reconstruct", "prepare-session", "finish-session") and body.get("execute"):
+        if stage in ("convert", "connectome", "import-session", "reconstruct", "prepare-session", "finish-session", "simulate") and body.get("execute"):
             if body.get("approve_compute") is not True:
                 raise ValueError("Explicit confirmation is required to execute external image-processing tools")
             args.append("--execute")
@@ -157,12 +201,14 @@ class JobManager:
             job_root = self.root / identifier
             arguments = self.arguments(body, job_root)
             job_root.mkdir(mode=0o700)
-            if body["stage"] in ("import-session", "import-nifti"):
+            if body["stage"] in ("import-session", "import-nifti", "cohort-reference"):
                 write_json(job_root / "selection_input.json", body["selection"])
             if body["stage"] == "reconstruct":
                 write_json(job_root / "choices_input.json", body["choices"])
-            if body["stage"] == "prepare-session":
+            if body["stage"] in ("prepare-session", "simulate"):
                 write_json(job_root / "settings_input.json", body["settings"])
+            if body["stage"] == "electrode":
+                write_json(job_root / "electrode_input.json", body["electrode"])
             job = {"id": identifier, "stage": body["stage"], "status": "queued", "logs": [],
                    "created": time.time(), "started": None, "ended": None, "process": None,
                    "output_root": str(job_root), "report": None, "result_run": None,
@@ -210,9 +256,13 @@ class JobManager:
                     if provs and read_json(provs[0])["status"] == "planned_not_executed":
                         job["status"] = "planned"
                     reports = list(Path(job["output_root"]).glob("*/mask_review.html"))
+                    reports += list(Path(job["output_root"]).glob("*/results_review.html"))
+                    reports += list(Path(job["output_root"]).glob("*/simulation_review.html"))
+                    reports += list(Path(job["output_root"]).glob("*/longitudinal_review.html"))
+                    reports += list(Path(job["output_root"]).glob("*/report/results_review.html"))
                     if reports:
                         job["report"] = str(reports[0])
-                    if job["stage"] in ("reconstruct", "prepare-session") and job["status"] == "completed":
+                    if job["stage"] in ("reconstruct", "prepare-session", "electrode", "adopt-electrode", "material") and job["status"] == "completed":
                         job["status"] = "needs_qc"
                 job["returncode"] = code
         except Exception as exc:
@@ -241,7 +291,7 @@ class JobManager:
     def state(self):
         with self.lock:
             return {"jobs": [self.snapshot(j) for j in reversed(list(self.jobs.values()))],
-                    "data_root": str(self.data_root), "output_root": str(self.root), "version": "0.1.0.dev0"}
+                    "data_root": str(self.data_root), "output_root": str(self.root), "version": "0.2.0a1"}
 
     def cancel(self, identifier):
         with self.lock:
@@ -301,6 +351,8 @@ def make_handler(manager, token):
             # sessionStorage token for API requests; all data endpoints remain authenticated.
             if path == "/" and self.local_origin():
                 return self.send(200, (Path(__file__).parent / "static/index.html").read_bytes(), "text/html")
+            if path == "/editor" and self.local_origin():
+                return self.send(200, (Path(__file__).parent / "static/editor.html").read_bytes(), "text/html")
             if not self.authorized():
                 return self.send(403, {"error": "Local access token required"})
             try:
@@ -311,7 +363,10 @@ def make_handler(manager, token):
                     job = manager.jobs.get(identifier)
                     names = {"inventory": "inventory.json", "import-session": "converted.json", "import-nifti": "converted.json",
                              "environment": "environment.json", "reconstruct": "reconstruction.json",
-                             "prepare-session": "prepared.json", "finish-session": "session_result.json", "approve": "approval.json"}
+                             "prepare-session": "prepared.json", "adopt-electrode": "prepared.json", "electrode": "electrode_result.json",
+                             "simulate": "simulation_result.json", "material": "material_result.json",
+                             "cohort-reference": "cohort_result.json", "longitudinal": "longitudinal_result.json",
+                             "finish-session": "session_result.json", "approve": "approval.json"}
                     if not job or job["status"] not in ("completed", "needs_qc") or job["stage"] not in names:
                         raise ValueError("No completed workflow result for this job")
                     result = read_json(Path(job["result_run"]) / names[job["stage"]])
@@ -358,6 +413,25 @@ def make_handler(manager, token):
                     raise ValueError("Expected an object")
                 if urlparse(self.path).path == "/api/jobs":
                     return self.send(202, {"id": manager.submit(body)})
+                if urlparse(self.path).path == "/api/editor-volume":
+                    from .electrodes import viewer_payload
+                    reference = manager.resolve_input(body.get("reference", ""))
+                    images = {key: manager.resolve_input(body[key]) for key in ("CT", "MRI", "Brain") if body.get(key)}
+                    centerlines = manager.resolve_input(body["centerlines"]) if body.get("centerlines") else None
+                    return self.send(200, viewer_payload(reference, images, centerlines))
+                if urlparse(self.path).path == "/api/workflow-load":
+                    from .workflow import prepared_paths, verified_reconstruction
+                    run = manager.resolve_input(body.get("run", ""))
+                    if body.get("stage") == "reconstruct":
+                        result = verified_reconstruction(run)
+                    elif body.get("stage") == "prepare-session":
+                        prepared_paths(run)
+                        result = read_json(run / "prepared.json")
+                    else:
+                        raise ValueError("Only completed reconstruction/preparation can be loaded here")
+                    for p in result["outputs"].values():
+                        manager.resolve_input(p)
+                    return self.send(200, {"run": str(run), "result": result})
                 if urlparse(self.path).path == "/api/cancel":
                     manager.cancel(body.get("id"))
                     return self.send(200, {"cancelled": True})

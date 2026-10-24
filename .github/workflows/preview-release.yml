@@ -1,0 +1,33 @@
+name: Publish research preview
+on:
+  push:
+    tags: ['v*']
+permissions:
+  contents: read
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      OPENBLAS_NUM_THREADS: '1'
+      OMP_NUM_THREADS: '1'
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.12'
+      - run: python -m pip install . build
+      - name: Verify version and synthetic tests
+        run: |
+          python -c 'import os, dbs_connectome; assert os.environ["GITHUB_REF_NAME"] == "v" + dbs_connectome.__version__'
+          python -m unittest discover -s tests -v
+      - name: Build source-only wheel
+        run: python -m build --wheel
+      - name: Publish labelled prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >-
+          gh release create "$GITHUB_REF_NAME" dist/*.whl --verify-tag --prerelease
+          --title "Post-DBS Connectome $GITHUB_REF_NAME — research preview"
+          --notes-file "docs/releases/$GITHUB_REF_NAME.md"

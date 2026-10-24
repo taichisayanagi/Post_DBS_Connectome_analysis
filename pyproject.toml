@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "dbs-native-connectome"
-version = "0.1.0.dev0"
+version = "0.2.0a1"
 description = "Research prototype for audited electrode-aware structural connectomics"
 requires-python = ">=3.11"
 license = {file = "LICENSE"}

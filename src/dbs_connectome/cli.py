@@ -15,17 +15,44 @@ from .qc import browser_report
 
 def parser():
     p = argparse.ArgumentParser(description="DBS Native Connectome: unvalidated research prototype")
-    p.add_argument("--version", action="version", version="0.1.0.dev0")
+    p.add_argument("--version", action="version", version="0.2.0a1")
     sub = p.add_subparsers(dest="command", required=True)
     gui = sub.add_parser("gui", help="Start the loopback-only browser application")
     gui.add_argument("--data-root", required=True)
     gui.add_argument("--output-root", required=True)
     gui.add_argument("--port", type=int, default=8765)
-    for name in ("environment", "inventory", "import-session", "import-nifti", "reconstruct", "prepare-session", "finish-session", "convert", "mask", "union", "approve", "connectome", "reference", "embed", "change", "fingerprint", "qc"):
+    for name in ("environment", "inventory", "import-session", "import-nifti", "reconstruct", "prepare-session", "finish-session", "convert", "mask", "union", "approve", "connectome", "reference", "embed", "change", "fingerprint", "qc", "electrode", "adopt-electrode", "simulate", "material", "results", "cohort-reference", "longitudinal"):
         s = sub.add_parser(name)
         s.add_argument("--output-root", required=True, help="Private result root outside source checkout")
         if name == "environment":
             pass
+        elif name == "cohort-reference":
+            s.add_argument("--nodes", required=True)
+            s.add_argument("--selection", required=True)
+        elif name == "longitudinal":
+            for field in ("first-connectome-run", "second-connectome-run", "reference-run", "nodes"):
+                s.add_argument("--" + field, required=True)
+            s.add_argument("--pairing-reviewed", action="store_true")
+        elif name == "results":
+            s.add_argument("--gradient-run", required=True)
+            s.add_argument("--nodes", required=True)
+            s.add_argument("--connectome-run")
+        elif name == "simulate":
+            s.add_argument("--segmentation", required=True)
+            s.add_argument("--settings", required=True)
+            s.add_argument("--threads", type=int, required=True)
+            s.add_argument("--execute", action="store_true")
+        elif name == "material":
+            s.add_argument("--reference", required=True)
+            s.add_argument("--five-tissue", required=True)
+        elif name == "electrode":
+            s.add_argument("--reference", required=True)
+            s.add_argument("--spec", required=True)
+            for field in ("ct", "mri", "brain-mask"):
+                s.add_argument("--" + field)
+        elif name == "adopt-electrode":
+            s.add_argument("--prepared-run", required=True)
+            s.add_argument("--electrode-run", required=True)
         elif name == "inventory":
             s.add_argument("--dicom-dir", required=True)
         elif name == "import-session":
@@ -106,6 +133,36 @@ def run(args, out):
     if command == "inventory":
         from .intake import inventory
         inventory(args.dicom_dir, out)
+        return
+    elif command == "cohort-reference":
+        from .longitudinal import cohort_reference
+        spec = read_json(args.selection)
+        cohort_reference(spec.get("runs"), args.nodes, out, spec.get("normalization", "none"), spec.get("training_reviewed"))
+        return
+    elif command == "longitudinal":
+        from .longitudinal import paired_change
+        paired_change(args.first_connectome_run, args.second_connectome_run, args.reference_run,
+                      args.nodes, out, args.pairing_reviewed)
+        return
+    elif command == "results":
+        from .reports import gradient_report
+        gradient_report(args.gradient_run, args.nodes, out, args.connectome_run)
+        return
+    elif command == "simulate":
+        from .stimulation import simulate
+        simulate(args.segmentation, read_json(args.settings), out, args.threads, args.execute)
+        return
+    elif command == "material":
+        from .stimulation import material_from_five_tissue
+        material_from_five_tissue(args.reference, args.five_tissue, out)
+        return
+    elif command == "electrode":
+        from .electrodes import make_electrode
+        make_electrode(args.reference, read_json(args.spec), out, args.ct, args.mri, args.brain_mask)
+        return
+    elif command == "adopt-electrode":
+        from .workflow import adopt_electrode
+        adopt_electrode(args.prepared_run, args.electrode_run, out)
         return
     elif command == "import-session":
         from .intake import convert_selection
@@ -271,7 +328,12 @@ def main(argv=None):
             from .gui import serve
             serve(args.data_root, args.output_root, args.port)
             return 0
-        for name in ("dicom_dir", "inventory_run", "import_run", "reference_run", "connectome_run", "first_run", "second_run", "reconstruction_run", "prepared_run"):
+        if args.command in ("electrode", "simulate", "material"):
+            for name in ("reference", "ct", "mri", "brain_mask", "segmentation", "five_tissue"):
+                source = getattr(args, name, None)
+                if source:
+                    require_separate_output(args.output_root, Path(source).resolve(strict=True).parent)
+        for name in ("dicom_dir", "inventory_run", "import_run", "reference_run", "connectome_run", "first_run", "second_run", "reconstruction_run", "prepared_run", "electrode_run", "gradient_run", "first_connectome_run", "second_connectome_run"):
             source = getattr(args, name, None)
             if source:
                 require_separate_output(args.output_root, source)

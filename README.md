@@ -2,21 +2,26 @@
 
 Scripts for Analysis for brains post deep brain stimulation electrode implantation
 
-## DBS Native Connectome — development prototype
+## DBS Native Connectome — GUI research preview v0.2.0a1
 
 Research software for electrode-aware, native-space structural connectomics.
-**Development prototype with linked processing stages. Not independently end-to-end or clinically validated. No validated release yet.**
+**Public research preview with linked processing stages, an image editor and an optional field solver.
+Not independently end-to-end or clinically validated.**
 Target repository: https://github.com/taichisayanagi/Post_DBS_Connectome_analysis .
 New code is MIT-licensed. Dependencies and atlases retain their own licenses.
 No patient data, brain images, private study matrices or third-party atlases are distributed.
 
 **[Current development progress and remaining milestones](docs/STATUS.md)**
 
+**[GUI quick start](docs/GUI_QUICKSTART.md)** · **[Electrode editor](docs/ELECTRODE_EDITOR.md)** ·
+**[Electric field / VTA-like simulation](docs/STIMULATION.md)** · **[v0.2.0a1 validation](docs/VALIDATION_20261024.md)**
+
 **New: [NIfTI / DICOM linked workflow](docs/LINKED_WORKFLOW.md).** The browser accepts raw NIfTI
 or reviewed DICOM series and links DWI/FOD reconstruction, anatomical registration, installed
 FreeSurfer/NextBrain processing, candidate electrode masking, ACT tractography, refitted SIFT2,
 connectome construction and G1–G4. Image QC is a mandatory checkpoint, not an automatic approval.
-CT localization is a conservative candidate detector, not the study's void-follow algorithm.
+CT localization and constrained MRI-void extraction produce reviewable candidates, not a proven
+reproduction of the study's original void-follow algorithm.
 
 ## Installation model
 
@@ -34,6 +39,9 @@ The installed tools, atlas resources and acquisition parameters must be configur
 - FreeSurfer surface mapping and NextBrain full-atlas commands; explicit cohort-frozen label mapping,
   nearest-neighbor atlas transfer and normalized five-tissue ACT images.
 - Automatic elongated CT-metal candidates or reviewed RAS centerlines; ambiguous detections stop.
+- Three-plane CT/MRI editor: CT-seeded metal plus constrained connected MRI void, MRI-only manual
+  shaft seeds, virtual geometry, point editing and audited local mask addition/erasure.
+- Immutable corrected-mask handoff to existing anatomical preparation; old QC approval is invalidated.
 - QC-gated automatic handoff into ACT tractography, exclusion, SIFT2 and gradients.
 - Continuous segment/voxel exclusion beyond MRtrix's sampled lookup, followed by a reread audit before SIFT2.
 - SIFT2 weight-count, finite/nonnegative-weight and positive-mu checks before matrix construction.
@@ -50,14 +58,20 @@ The installed tools, atlas resources and acquisition parameters must be configur
 - Study-compatible hemisphere-wise log1p / normalized-angle diffusion-map embedding:
   75% row sparsity, alpha 0.05, diffusion time 0, 10 computed / 4 retained components.
 - Reference-bound longitudinal 4D parcel displacement and per-axis change.
+- GUI training-reference construction from explicitly selected connectomes and paired-visit alignment;
+  G1–G4, reference-centered eccentricity, CSV exports, interactive parcel plots and matrix heatmaps.
+- Optional external OSS-DBS integration: explicit lead model/tip/rotation, voltage or current control,
+  isotropic single-frequency electric field and thresholded VTA-like NIfTI with a local slice viewer.
+  The solver is separately installed; no pulse-width/axon activation or clinical setting recommendation.
 - Timestamped, non-overwriting private run folders, hashes and decoded voxel fingerprints.
 
-**Not implemented yet:** the paper's b0 void-following algorithm and reviewed island repair;
-MRI-only automatic lead localization; longitudinal mask-transform and cohort LOSO orchestration;
-multi-session browser overlays; comprehensive model/license validation; independent end-to-end validation.
+**Not implemented/validated:** exact equivalence to the paper's b0 void-following algorithm;
+MRI-only automatic lead localization; automatic longitudinal mask transforms and LOSO orchestration;
+automated physical-contact/tip/rotation reconstruction; pulse-width/axon activation, multi-lead FEM,
+mesh/domain convergence validation; comprehensive model/license checks; independent end-to-end validation.
 
-The centerline tube is a candidate-mask utility, **not** a reproduction of the study's final void-follow
-mask. Its radius is not a universal artifact boundary. CT metal geometry and diffusion signal loss
+The CT/MRI editor and centerline tube are candidate-mask utilities, **not** validated reproductions of
+the study's final void-follow mask. Their radius is not a universal artifact boundary. CT metal geometry and diffusion signal loss
 need not coincide. Anatomical alignment and full-shaft void coverage must be inspected on the images.
 An approval file records a human attestation; the software cannot establish that the inspection was correct.
 
@@ -98,7 +112,7 @@ For gradient jobs, the optional completed-connectome run field enables hash veri
 the matrix's electrode-exclusion lineage; omitting it is explicitly recorded as unverified.
 
 Use Image workflow for linked processing and Advanced steps for individual operations.
-The common node TSV and local atlas resources require expert setup. This version does not automate
+The common node TSV, local atlas resources and physical electrode model require expert setup. This version does not automate
 every cohort-design decision. The GUI is not evidence of validated reconstruction.
 
 ### Prepared-input connectome
@@ -124,7 +138,8 @@ The provided tractogram must already be in the reference's world space; this is 
 TCK file alone. Execution rejects out-of-FOV vertices and tracks with segment spacing greater than
 half the smallest reference voxel dimension: sparsely sampled tracks can jump over a mask.
 Explicit upstream resampling and renewed validation are required in that case. Full lineage and
-an independent continuous streamline-exclusion audit remain release requirements.
+an independent continuous streamline-exclusion audit are recorded before SIFT2.
+SIFT2 reweights remaining streamlines; it does not reconstruct signal lost to metal artifacts.
 
 ### Gradient analysis
 
@@ -164,11 +179,13 @@ See `docs/RELEASE_CHECKLIST.md` before any public push.
 
 ## Upstream documentation
 
-Implementation API references checked 2026-09-15 JST:
+MRI API references checked 2026-09-15 JST; OSS-DBS adapter references checked 2026-10-24 JST:
 
 - [dcm2niix](https://github.com/rordenlab/dcm2niix)
 - [MRtrix tck2connectome and endpoint assignment](https://mrtrix.readthedocs.io/en/latest/reference/commands/tck2connectome.html)
 - [BrainSpace GradientMaps](https://brainspace.readthedocs.io/en/latest/generated/brainspace.gradient.gradient.GradientMaps.html)
+- [OSS-DBSv2 input settings](https://oss-dbsv2.readthedocs.io/en/latest/input_settings.html)
+- [OSS-DBSv2 electrode geometry](https://oss-dbsv2.readthedocs.io/en/latest/electrodes.html)
 
 These links document dependencies, not validation of this prototype. Dependency binaries, atlases
 and their licenses must be handled separately. No manuscript citation or software DOI is assigned yet.

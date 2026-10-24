@@ -35,3 +35,14 @@ The end-to-end and independent-data gates below apply before a scientific/valida
 
 The prototype is research-only. It does not establish MRI device safety, electrode migration,
 DBS target engagement, stimulation settings or patient-specific clinical recommendations.
+
+## v0.2.0a1 preview-specific checks
+
+- Clearly label CT/MRI fused masks as candidates; distinguish physical electrodes, exclusion and VTA.
+- Test manual erasure reasons and invalidation of earlier mask/atlas approvals.
+- Test current/voltage and V/m/V/mm conversions with the real separately installed solver.
+- Keep physical tip/rotation/contact mapping as explicit independent review requirements.
+- Label single-frequency threshold output as VTA-like; do not imply pulse-width or axon activation.
+- Publish tests, configuration logic and source only. Do not commit private HTML reports, DICOM,
+  tissue maps, field solutions, machine-local environment paths or solver installation environments.
+- Preserve the distinction between a public tagged preview and an independently validated scientific release.

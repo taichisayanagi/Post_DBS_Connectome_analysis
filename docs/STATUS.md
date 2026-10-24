@@ -1,6 +1,6 @@
 # Development status
 
-Updated 2026-09-15 (JST). Version: **0.1.0.dev0**, research development prototype.
+Updated 2026-10-24 (JST). Version: **0.2.0a1**, GUI research preview.
 This is not an end-to-end validated DICOM pipeline or a clinical tool.
 
 | Workstream | Current state | Next acceptance check |
@@ -10,16 +10,22 @@ This is not an end-to-end validated DICOM pipeline or a clinical tool.
 | DICOM import | Header inventory, explicit roles/patient/visit review, private selected-series conversion and output choice | Multi-vendor and enhanced-DICOM validation |
 | NIfTI intake | Private image/sidecar copies, gradient checks, source-integrity audit | More vendor/header cases |
 | CT/MRI/DWI reconstruction | Acquisition-gated DWI/FOD and rigid registrations; linked FreeSurfer/NextBrain/5TT adapters | Independent full patient reconstruction |
-| Electrode mask | CT metal candidates or reviewed centerlines; ambiguous counts stop; registered union utility | Reproduce study void-follow; automatic longitudinal registration |
+| Electrode mask | CT candidates + constrained MRI void, manual RAS point and local add/erase editor; immutable mask adoption | Study-algorithm equivalence; independent coverage validation; automatic longitudinal registration |
 | Linked connectome | QC → ACT → strict segment exclusion and audit → SIFT2 refit and weight checks → matrix → G1–G4 | Real-patient whole-chain testing |
-| Gradient G1–G4 | Reference-bound embedding and longitudinal change implemented | Automatic training-only/LOSO reference construction and study-level equivalence |
+| Gradient G1–G4 | Explicit training-mean reference, paired alignment, change CSV and interactive plots/matrix report | Automated LOSO; independent axis stability and study-level equivalence |
+| Field / VTA-like modeling | Separate OSS-DBS 0.5.9 adapter; explicit model/tip/rotation; voltage/current; field NIfTI and local viewer | Independent localization, mesh/domain convergence, pulse-width/axon modeling; not clinically validated |
 | Distribution | MIT GUI/workflow package; calls user-installed software; no all-in-one bundle | Stage-specific environment checks and tested local dependency combinations |
 | Environment setup | Read-only GUI discovery via PATH/configured suite roots; stage-specific execution checks | GUI path settings, resource/license availability checks and bounded smoke tests |
 
 ## Evidence obtained so far
 
-- 89 synthetic unit/integration/static-interface tests passed locally on macOS/Python 3.12. They cover source/output separation, byte-integrity guards, DICOM/NIfTI lineage, acquisition guards, geometry, mask approval hashes, label indexing,
+- 113 synthetic unit/integration/static-interface tests passed locally on macOS/Python 3.12. They cover source/output separation, byte-integrity guards, DICOM/NIfTI lineage, acquisition guards, geometry, mask approval hashes, label indexing,
   gradient reference integrity, GUI access controls, job execution and cancellation records.
+- New CT/MRI candidate generation, MRI-only seeds, local correction audit, stale approval rejection,
+  tissue/field unit checks, fixed-reference paired G1–G4 CSV values and report matrix identities are covered.
+- Actual OSS-DBS voltage and current FEM completed on a homogeneous synthetic phantom; field and binary
+  threshold NIfTI and browser reports were generated. This tests adapter interoperability, not patient VTA.
+  See [dated validation record](VALIDATION_20261024.md) for exact scope and reproduction commands.
 - A local browser QC job using an artificial phantom was queued, completed and opened in the GUI.
   Browser QA of the DICOM control-panel GUI subsequently covered installation discovery, synthetic
   series listing, selection and real dcm2niix conversion. Full patient reconstruction remains untested.

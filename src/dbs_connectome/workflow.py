@@ -14,6 +14,7 @@ from .intake import verified_output
 from .masks import create_candidate, require_approval
 from .provenance import assert_inputs_unchanged, digest, freeze_inputs, image3d, read_json, record, require_separate_output, write_json
 from .qc import browser_report
+from .electrodes import verified_electrode
 from .reconstruction import selected_artifacts
 
 
@@ -47,8 +48,10 @@ def prepare_session(reconstruction_run, settings, out, threads, execute_tools=Fa
     elif mode == "centerlines":
         if not settings.get("centerlines"):
             raise ValueError("Select reviewed centerlines bound to the reconstructed b0 reference")
+    elif mode == "electrode_run":
+        verified_electrode(settings["electrode_run"], outputs["reference"])
     else:
-        raise ValueError("Select ct_candidate or reviewed centerlines; MRI-only automatic localization is not validated")
+        raise ValueError("Select CT candidates, reviewed centerlines or an image-editor electrode run")
     commands = anatomical_plan(t1, outputs["t1_transform"], outputs["reference"], resources, out, threads)
     write_json(out / "plan.json", commands)
     write_json(out / "settings.json", settings)
@@ -57,6 +60,9 @@ def prepare_session(reconstruction_run, settings, out, threads, execute_tools=Fa
               resources["nextbrain_script"], resources["nextbrain_atlas"] / "size.npy"]
     if mode == "centerlines":
         inputs.append(settings["centerlines"])
+    if mode == "electrode_run":
+        candidate = verified_electrode(settings["electrode_run"], outputs["reference"])
+        inputs += [Path(settings["electrode_run"]) / "electrode_result.json", *candidate["outputs"].values()]
     if not execute_tools:
         record(out, "prepare-session", inputs, {"threads": threads}, [out / "plan.json", out / "settings.json"], "planned_not_executed")
         return
@@ -83,8 +89,13 @@ def prepare_session(reconstruction_run, settings, out, threads, execute_tools=Fa
     if mode == "ct_candidate":
         centerlines = ct_centerlines(outputs["ct_in_b0"], outputs["brain_mask"], outputs["reference"], out,
                                     settings.get("ct_threshold_hu", 2000), settings.get("expected_leads", 2))
-    mask = create_candidate(outputs["reference"], centerlines, out,
-                            settings.get("radius_mm", 3.5), settings.get("dilation_passes", 1))
+    if mode == "electrode_run":
+        candidate = verified_electrode(settings["electrode_run"], outputs["reference"])
+        mask = out / "mask_candidate.nii.gz"
+        shutil.copyfile(candidate["outputs"]["mask"], mask)
+    else:
+        mask = create_candidate(outputs["reference"], centerlines, out,
+                                settings.get("radius_mm", 3.5), settings.get("dilation_passes", 1))
     nodes = out / "nodes.tsv"
     shutil.copyfile(resources["nodes"], nodes)
     present = set(np.unique(np.asanyarray(image3d(atlas).dataobj)).astype(int))
@@ -102,7 +113,7 @@ def prepare_session(reconstruction_run, settings, out, threads, execute_tools=Fa
         "source_root": recon.get("source_root"),
         "hashes": {p: digest(p) for p in bundle.values()}, "missing_dwi_nodes": missing,
         "reconstruction_run": str(Path(reconstruction_run).resolve()),
-        "mask_algorithm": "CT_or_reviewed_centerline_tube_NOT_study_void_follow",
+        "mask_algorithm": candidate["algorithm"] if mode == "electrode_run" else "CT_or_reviewed_centerline_tube_NOT_study_void_follow",
         "automatic_qc_approval": False, "study_pipeline_equivalence": "not_validated",
         "next": "Inspect b0/CT/atlas/5TT and mask coverage, then approve exact files. No tractography or clinical inference has run."})
     record(out, "prepare-session", inputs, {"threads": threads, "mask_algorithm": mode, "manual_qc_required": True},
@@ -117,6 +128,32 @@ def prepared_paths(run):
     if prepared["missing_dwi_nodes"]:
         raise ValueError("Atlas has missing nodes on the DWI grid; establish a common valid node basis across visits before proceeding")
     return prepared["outputs"]
+
+
+def adopt_electrode(prepared_run, electrode_run, out):
+    """New immutable preparation; never replace the old mask or its QC record."""
+    out = Path(out).resolve()
+    paths = dict(prepared_paths(prepared_run))
+    original = read_json(Path(prepared_run) / "prepared.json")
+    for source in (prepared_run, electrode_run, original.get("source_root")):
+        if source:
+            require_separate_output(out, source)
+    candidate = verified_electrode(electrode_run, paths["reference"])
+    inputs = [Path(prepared_run) / "prepared.json", Path(electrode_run) / "electrode_result.json",
+              *paths.values(), *candidate["outputs"].values()]
+    before = freeze_inputs(inputs)
+    mask = out / "mask_candidate.nii.gz"
+    shutil.copyfile(candidate["outputs"]["mask"], mask)
+    paths["mask"] = str(mask)
+    browser_report(paths["reference"], mask, out / "mask_review.html", atlas=paths["atlas"], five_tissue=paths["five_tissue"])
+    result = {**original, "outputs": paths, "hashes": {p: digest(p) for p in paths.values()},
+              "parent_prepared_run": str(Path(prepared_run).resolve()), "electrode_run": str(Path(electrode_run).resolve()),
+              "mask_algorithm": candidate["algorithm"], "status": "needs_qc", "automatic_qc_approval": False,
+              "next": "Mask changed. Review the NEW mask/atlas/5TT and record fresh approval before continuing."}
+    write_json(out / "prepared.json", result)
+    assert_inputs_unchanged(before)
+    record(out, "prepare-session", inputs, {"action": "adopt-electrode", "fresh_qc_required": True},
+           [out / "prepared.json", mask, out / "mask_review.html"])
 
 
 def finish_session(prepared_run, approval, out, threads, streamlines=1000000, reference_run=None, execute_tools=False):
@@ -156,7 +193,7 @@ def finish_session(prepared_run, approval, out, threads, streamlines=1000000, re
         record(out, "finish-session", source_inputs, {"threads": threads, "streamlines": streamlines},
                [out / "plan.json", out / "connectome_config.json"], "planned_not_executed")
         return
-    for name in ("tractography", "connectome", "gradient"):
+    for name in ("tractography", "connectome", "gradient", "report"):
         (out / name).mkdir(mode=0o700)
     validate_mif_grid(paths["fod"], paths["reference"], out / "tractography")
     validate_mif_grid(paths["five_tissue"], paths["reference"], out / "tractography")
@@ -167,11 +204,13 @@ def finish_session(prepared_run, approval, out, threads, streamlines=1000000, re
                       reference_run=str(reference_run), connectome_run=str(out / "connectome")), out / "gradient")
     else:
         run(Namespace(command="reference", matrix=str(out / "connectome/connectome.npy"), nodes=paths["nodes"]), out / "gradient")
+    from .reports import gradient_report
+    gradient_report(out / "gradient", paths["nodes"], out / "report", out / "connectome")
     assert_inputs_unchanged(before)
     write_json(out / "source_integrity.json", {"source_bytes_unchanged": True, "input_count": len(before)})
     write_json(out / "session_result.json", {"status": "completed", "connectome_run": str(out / "connectome"),
         "gradient_run": str(out / "gradient"), "alignment": "reference_aligned" if reference_run else "UNALIGNED_SINGLE_SESSION",
-        "nodes": paths["nodes"], "streamlines_requested": streamlines,
+        "nodes": paths["nodes"], "report": str(out / "report/results_review.html"), "streamlines_requested": streamlines,
         "study_pipeline_equivalence": "not_validated", "clinical_validity": False})
     record(out, "finish-session", source_inputs, {"threads": threads, "streamlines": streamlines},
-           [out / "session_result.json", out / "source_integrity.json", out / "connectome/provenance.json", out / "gradient/provenance.json"])
+           [out / "session_result.json", out / "source_integrity.json", out / "connectome/provenance.json", out / "gradient/provenance.json", out / "report/provenance.json"])
