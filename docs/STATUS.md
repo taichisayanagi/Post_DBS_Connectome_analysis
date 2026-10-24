@@ -34,6 +34,8 @@ This is not an end-to-end validated DICOM pipeline or a clinical tool.
   Noise/outcome comparisons are also exported; reliability alone is not clinical validity.
 - Distance, donor-mask, Dice/Mantel and exclusion-cost controls: 86 frozen numeric values
   matched within 7.2e-15, including the unmasked-baseline Mantel follow-up.
+- Representation perturbation-to-signal, between-subject structure preservation and spatial
+  error profiles: a further 42 values matched within 1.4e-15.
 - Raw/standardized G1, G1–G4, node and edge representation comparisons in both cohorts:
   50 values matched within 9.5e-15. Ten change-map concordance summaries also matched,
   including the 20,000-draw within-hemisphere parcel-permutation null.
@@ -47,7 +49,7 @@ This is not an end-to-end validated DICOM pipeline or a clinical tool.
 - Common-reference graph and edge comparators reproduce 3/18 and 16/18 identification.
 - A macOS NextBrain DataLoader workaround runs only in a child process, without modifying
   the installed tool. Real anatomical processing is in progress, not declared validated.
-- 151 synthetic and regression checks pass locally; see the
+- 152 synthetic and regression checks pass locally; see the
   [numerical-replay validation record](VALIDATION_REPLAY_20261024.md).
   Earlier evidence below belongs to v0.2.0a1.
 

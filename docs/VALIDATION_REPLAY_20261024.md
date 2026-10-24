@@ -5,7 +5,7 @@ Version: **0.3.0a1** research preview. This record is intentionally narrower tha
 
 ## Release checks
 
-- 151 synthetic/unit/integration checks passed locally on macOS, Python 3.12.
+- 152 synthetic/unit/integration checks passed locally on macOS, Python 3.12.
 - A source-only wheel was built and installed in a separate virtual environment.
   Imports, CLI entry points and bundled report HTML were checked outside the checkout.
   This environment reused installed scientific dependencies; it is not a clean-environment
@@ -31,6 +31,7 @@ Version: **0.3.0a1** research preview. This record is intentionally narrower tha
 | Unmasked external benchmark | 15 identification/density and 3 healthy-axis summaries | 3.6e-15 |
 | Repeat-scan/synthetic-void controls | 51 summaries | 2.0e-15 |
 | Geometry/distance/mask-swap controls | 86 summaries | 7.2e-15 |
+| Representation perturbation, structure preservation and spatial error | 42 summaries | 1.4e-15 |
 | Raw/standardized representation comparisons | 50 summaries across two cohorts | 9.5e-15 |
 | Hemisphere-aware change-map concordance | 10 summaries, 20,000 permutations | 3.5e-18 |
 | Original void-follow + historical repairs | 18 adopted masks | Bitwise equality |
@@ -70,8 +71,8 @@ Random tractography is not promised to reproduce historical tracks bitwise.
 - Complete and inspect the real anatomical/atlas pipeline, both native-grid mask registrations,
   expert mask QC, ACT, SIFT2 and cohort node correspondence.
 - Validate a complete new NIfTI/DICOM case through final results with source-integrity checks.
-- Finish the legacy exhaustive families, symptom-side analyses, all caliber/representation
-  robustness and cross-cohort transfer analyses, and power simulations.
+- Finish the legacy exhaustive families, symptom-side analyses, caliber robustness,
+  cross-cohort transfer analyses, and power simulations.
 - Rebuild every adopted figure/table from a single adjudicated version of its input lineage.
 - Resolve the surface-graph and rounded-pooling discrepancies with the study authors.
 

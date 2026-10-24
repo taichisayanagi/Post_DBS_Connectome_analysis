@@ -49,6 +49,9 @@ atlas source labels in cortical L-then-R order, image paths/hashes, registered d
 mask pairs and optional masked swap matrices. Distance means parcel centroid to the nearest
 mask-voxel **centre**, not distance to a surface or the physical metal. Pairwise registration
 and parcel-label correspondence are supplied and require independent review.
+When unmasked preoperative matrices are supplied, fixed-reference perturbation-to-signal,
+between-subject structure preservation and spatial error are computed for gradient, node
+and edge representations. These mask perturbations are not independent scan-rescan data.
 
 `representation-study` compares G1, G1–G4, log-weight nodal strength, degree and log edges
 under raw correlation and feature-wise standardization. Only different visits are eligible
@@ -132,7 +135,7 @@ and `simulation_retrack`. They must share the fixed node basis and reference des
   reliability, artifact and healthy-reference analyses.
 - Remaining supplementary families include the legacy 280/322/420-test inventories,
   symptom-side comparisons, caliber-wise comparisons, cross-cohort transfer and replication
-  across matched representations, structure-preservation audits and simulation-based power.
+  across matched representations and simulation-based power.
   Supplying one passing primary-analysis manifest does not cover these families.
 - Rebuild every adopted figure/table from recomputed results and verify its source values.
 - Complete expert image QC before any new patient-derived outputs are accepted.

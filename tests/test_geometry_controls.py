@@ -5,12 +5,24 @@ import unittest
 import nibabel as nib
 import numpy as np
 from scipy.stats import spearmanr
-from dbs_connectome.geometry_controls import parcel_distances,mask_dice,mantel,donor_null
+from dbs_connectome.geometry_controls import parcel_distances,mask_dice,mantel,donor_null,representation_perturbation
 from dbs_connectome.provenance import digest
 from dbs_connectome.provenance import write_json
 from dbs_connectome.study import expected_checks
 
 class GeometryControlTests(unittest.TestCase):
+    def test_perturbation_units_and_identity(self):
+        rng=np.random.default_rng(8)
+        m=rng.uniform(1,2,(4,9,9));m=(m+m.transpose(0,2,1))/2
+        for x in m:np.fill_diagonal(x,0)
+        # Vary graph degree so its structure comparison is defined.
+        for i in range(4):m[i,i,(i+1)%9]=m[i,(i+1)%9,i]=0
+        g=rng.normal(size=(4,9,4));distance=np.tile([10,20,25,35,45,55,65,75,85],(4,1))
+        result=representation_perturbation(m,m,g,g,distance)
+        self.assertEqual(result['perturbation_to_signal']['G1-G4']['ratio'],0)
+        self.assertAlmostEqual(result['structure_preservation']['G1-G4']['r'],1)
+        self.assertEqual(result['spatial_error']['gradient']['far'],0)
+
     def test_empty_frozen_check_cannot_certify_replay(self):
         with tempfile.TemporaryDirectory() as t:
             p=Path(t)/'expected.json';write_json(p,{'value':1})

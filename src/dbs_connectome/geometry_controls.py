@@ -90,6 +90,40 @@ def donor_null(delta, donors):
             'n_relabelings': len(null), 'null_q95': float(np.percentile(null, 95))}
 
 
+def representation_perturbation(first, second, first_gradients, second_gradients, distance):
+    """Fixed-reference mask sensitivity, not scan-rescan reliability."""
+    n, parcels = first.shape[:2]; upper=np.triu_indices(parcels,1)
+    a,b=np.log1p(first),np.log1p(second)
+    def features(w,g):
+        return {'G1':g[:,:,0], 'G1-G4':g.reshape(n,-1), 'node_strength':w.sum(2),
+                'node_degree':(w>0).sum(2).astype(float), 'edges_log1p':w[:,upper[0],upper[1]]}
+    fa,fb=features(a,first_gradients),features(b,second_gradients)
+    between_subject=np.triu_indices(n,1); perturbation={};preservation={}
+    for name in fa:
+        x,y=fa[name],fb[name]
+        within=float(abs(x-y).mean());between=float(x.std(0).mean())
+        perturbation[name]={'within':within,'between':between,'ratio':within/max(between,1e-12)}
+        sx=np.corrcoef((x-x.mean(0))/(x.std(0)+1e-12))[between_subject]
+        sy=np.corrcoef((y-y.mean(0))/(y.std(0)+1e-12))[between_subject]
+        preservation[name]={'r':float(np.corrcoef(sx,sy)[0,1]),'rho':float(spearmanr(sx,sy).statistic),
+                            'disp':float(abs(sx-sy).mean())}
+    errors={'gradient':np.linalg.norm(first_gradients-second_gradients,axis=2),
+            'node':abs(a.sum(2)-b.sum(2)), 'edge':abs(a-b).mean(2)}
+    denominators={'gradient':np.linalg.norm(first_gradients-first_gradients.mean(0),axis=2).std(0),
+                  'node':a.sum(2).std(0),'edge':a.mean(2).std(0)}
+    profiles={}
+    for name,errors_ in errors.items():
+        z=errors_/(denominators[name]+1e-12); values=[]
+        for lower,upper_ in [(0,30),(30,60),(60,np.inf)]:
+            per_subject=[]
+            for i in range(n):
+                select=(distance[i]>=lower)&(distance[i]<upper_)
+                if select.any():per_subject.append(float(np.median(z[i,select])))
+            values.append(float(np.mean(per_subject)) if per_subject else float('nan'))
+        profiles[name]=dict(zip(('near','mid','far'),values));profiles[name]['ratio']=values[0]/max(values[2],1e-12)
+    return {'perturbation_to_signal':perturbation,'structure_preservation':preservation,'spatial_error':profiles}
+
+
 def run_geometry_controls(manifest, out):
     out = Path(out); initial = read_json(manifest); paths = [manifest, *manifest_paths(initial)]
     for p in paths: require_separate_output(out, Path(p).parent)
@@ -167,6 +201,8 @@ def run_geometry_controls(manifest, out):
         error = np.linalg.norm(a-b, axis=2)
         sd = np.linalg.norm(a-a.mean(0), axis=2).std(0) + 1e-12
         z = error/sd; bins = [0, 15, 30, 45, 60, 75, 200]; profile = []
+        result['representation_robustness']=representation_perturbation(
+            pre[:,order][:,:,order],matrices[:,0][:,order][:,:,order],a,b,distance)
         for lo, hi in zip(bins[:-1], bins[1:]):
             select = (distance >= lo) & (distance < hi)
             profile.append({'bin_mm': [lo, hi], 'n': int(select.sum()), 'median_err_sd': float(np.median(z[select])) if select.any() else None})
