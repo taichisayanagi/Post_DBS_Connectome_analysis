@@ -71,6 +71,29 @@ replay also does not prove that the historical data were free of imaging artifac
 8. An existing provenance note records that the old 420-test output directory, despite
    its comments, used shared-mask matrices. The distinct session-mask output is separately
    reproduced. Input schemes are explicit and hashes preserve the distinction.
+9. The 420-test family has 14.6667 expected hits under its actual row-conditional exact
+   nulls. The manuscript states 13.99. The software exports the computed expectation and
+   complete shared-relabelling histogram; no manuscript correction has been made here.
+
+## Statistical design and family nulls
+
+The n=6 exact ordering/leave-one-out counts were independently enumerated. The critical
+two-sided Spearman magnitude is 0.885714 at alpha 0.05, with achieved probability 24/720.
+Nine power points used 200,000 bivariate-normal replicates each, seed 20261024, and agreed
+with the historical rounded estimates within five combined Monte Carlo standard errors
+plus the rounding bound. This is statistical agreement, not equality to unknown old draws.
+The six first estimated n values at 80% power matched 7/9/10/12/15/22. Nulls are exact
+through n=8 and sampled from 400,000 orderings above n=8. Every n-specific simulated power
+estimate is exported; first crossing remains uncertain, not a guaranteed design prescription.
+
+The 322-test dependency-preserving null matched the stored rounded count, mean and upper
+tail: 7, 11.2444 and 0.7667. Its exact recomputed upper tail is 0.7666667. The 280-test
+expectation is 9.3333, and both 420-test schemes yield 14.6667. Observed hit counts are
+9, 7 and 8, respectively. The family tests are not assumed independent.
+
+An installed-wheel GUI run completed 14 supplied real-data replay tasks; all frozen checks
+passed and source hashes were unchanged. That suite does not include raw-image reconstruction.
+There are now 169 local synthetic/regression tests, including statistical-audit checks.
 
 ## Raw-image boundary
 
@@ -89,8 +112,8 @@ Random tractography is not promised to reproduce historical tracks bitwise.
 - Complete and inspect the real anatomical/atlas pipeline, both native-grid mask registrations,
   expert mask QC, ACT, SIFT2 and cohort node correspondence.
 - Validate a complete new NIfTI/DICOM case through final results with source-integrity checks.
-- Finish remaining omnibus/family-hit-count null audits and exact-test power simulations,
-  plus figure-source coverage beyond the inventories and comparisons above.
+- Finish the remaining conventional-graph/omnibus family audits and figure-source coverage.
+  Gradient-inventory hit-count nulls and the stated exact-test power design are now implemented.
 - Rebuild every adopted figure/table from a single adjudicated version of its input lineage.
 - Resolve the surface-graph and rounded-pooling discrepancies with the study authors.
 

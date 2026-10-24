@@ -157,6 +157,20 @@ Control cases have explicit definitions and ordered, hash-bound subject matrices
 `control_sessions`: `retest`, `simulation_baseline`, `simulation_void`, `simulation_rim`,
 and `simulation_retrack`. They must share the fixed node basis and reference design.
 
+## Statistical design audit
+
+`power-study --config examples/statistical_design.json --output-root /private/results`
+is also exposed in the GUI. It enumerates the n=6 permutation/leave-one-out boundaries,
+then runs explicitly seeded bivariate-normal power simulations. The generating parameter
+is Pearson r, while the decision statistic is Spearman rho. Power is not asserted to be
+bitwise-reproducible against an old run with an unknown seed. Above n=8 the permutation
+null is sampled, not exact. The output includes every evaluated n, Monte Carlo uncertainty,
+and the first estimated threshold crossing. No clinical effect size is selected automatically.
+
+`exploratory-study` also exports a shared-participant-relabelling histogram of nominal hit
+counts. It preserves dependence and tied ranks rather than multiplying the number of tests
+by a nominal five-percent rate. Historical counts that do not agree remain discrepancies.
+
 ## Remaining full-paper acceptance gates
 
 - Reexecute and validate raw-image reconstruction through anatomy, mask QC, ACT and SIFT2.
@@ -164,8 +178,8 @@ and `simulation_retrack`. They must share the fixed node basis and reference des
   overlays have been replayed; fresh image QC is a different requirement.
 - Validate the separate unmasked preoperative graph basis and all supplementary sensitivity,
   reliability, artifact and healthy-reference analyses.
-- Remaining supplementary coverage includes omnibus/family-hit-count null audits,
-  simulation-based power and all adopted figure sources. Legacy 280/322/420 inventories,
+- Remaining supplementary coverage includes conventional-graph/omnibus audits
+  and all adopted figure sources. Legacy 280/322/420 inventories and their hit-count nulls,
   lateralized/symptom-side analyses and comparative audits are separate operations;
   supplying one passing primary-analysis manifest does not execute them automatically.
 - Rebuild every adopted figure/table from recomputed results and verify its source values.

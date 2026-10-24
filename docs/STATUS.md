@@ -1,6 +1,6 @@
 # Development status
 
-Updated 2026-10-24 (JST). Version: **0.3.0a2**, GUI research preview.
+Updated 2026-10-24 (JST). Version: **0.3.0a3**, GUI research preview.
 This is not an end-to-end validated DICOM pipeline or a clinical tool.
 
 | Workstream | Current state | Next acceptance check |
@@ -60,7 +60,16 @@ This is not an end-to-end validated DICOM pipeline or a clinical tool.
   separately labelled four-axis sensitivity calculation are both exported. Historical
   pooled-coordinate geometry and the old non-ICC variance ratio are not presented as valid
   hemisphere-aware geometry or scan-rescan ICC.
-- 164 synthetic and regression checks pass locally; see the
+- The installed v0.3.0a2 package completed a 14-task real-data numerical suite through the GUI;
+  every supplied frozen-output check passed and input hashes remained unchanged.
+- Exact n=6 ordering/leave-one-out counts were re-enumerated. Nine 200,000-replicate power
+  estimates agreed with historical values within explicitly assessed Monte Carlo uncertainty;
+  all six estimated sample-size thresholds matched. Original seeds are unknown, so this is
+  not bitwise replay of the old random draws.
+- Shared-relabelling hit counts preserve dependence and ties. The 322-test result matches
+  the stored rounded values (7 hits, mean 11.2444, upper-tail probability 0.7667). The 420-test
+  expectation recomputes to 14.6667, not the manuscript's 13.99; this discrepancy is unresolved.
+- 169 synthetic and regression checks pass locally; see the
   [numerical-replay validation record](VALIDATION_REPLAY_20261024.md).
   Earlier evidence below belongs to v0.2.0a1.
 

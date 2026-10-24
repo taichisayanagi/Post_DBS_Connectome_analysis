@@ -14,6 +14,7 @@ from .provenance import (assert_inputs_unchanged, freeze_inputs, read_json, reco
                          require_separate_output, write_json)
 from .study import (clean, cohort_embeddings, expected_checks, load_manifest,
                     manifest_paths, write_csv)
+from .statistical_audit import family_hit_null
 
 JP = dict(zip(NETWORKS, ('視覚', '体性運動', '背側注意', '腹側注意', '辺縁系', '前頭頭頂制御', 'DMN')))
 
@@ -149,12 +150,10 @@ def run_exploratory(manifest,out):
         mx=abs(np.stack([nulls[i] for i in ix])).max(0)
         for i in ix:rows[i]['p_fwe_clin']=float(np.mean(mx>=abs(rows[i]['rho'])-1e-12))
     write_csv(out/'exploratory_correlations.csv',rows);write_csv(out/'exploratory_subject_values.csv',subject_values)
-    expected_hits=0.
-    for null in nulls:
-        absolute=abs(null);pnull=(len(null)-np.searchsorted(np.sort(absolute),absolute-1e-12,side='left'))/len(null)
-        expected_hits+=float(np.mean(pnull<.05))
+    hit_audit=family_hit_null(nulls,[r['p'] for r in rows])
     result={'inventory':mode,'n_metrics':len(metrics),'n_tests':len(rows),'n_nominal_p_lt_05':sum(r['p']<.05 for r in rows),
-        'exact_discrete_null_expected_hits_p_lt_05':expected_hits,
+        'exact_discrete_null_expected_hits_p_lt_05':hit_audit['expected_hits'],
+        'dependency_preserving_hit_null':hit_audit,
         'n_fwe_lt_05':sum(r['p_fwe']<.05 for r in rows),'excluded_metrics':excluded,'subcortical_name_matches':structures,
         'warning':'Historical exploratory inventory pools independently embedded hemispheres. The legacy column named ICC is only a clipped between-subject/total variance ratio, not an ICC estimator. Subcortical time-0 entries duplicate post1 and are not preoperative measurements. Eigenvalue shares are not PCA explained-variance estimates.'}
     checks=expected_checks(spec,{'exploratory_correlations':rows,'exploratory_result':result},[])

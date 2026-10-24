@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "scope": "statistical_design_audit",
+  "seed": 20261024,
+  "alpha": 0.05,
+  "target_power": 0.8,
+  "n_min": 6,
+  "n_max": 30,
+  "power_replicates": 200000,
+  "sample_size_replicates": 100000,
+  "null_draws_above_n8": 400000,
+  "generating_pearson": [0.30, 0.50, 0.60, 0.70, 0.80, 0.886, 0.90, 0.943, 0.95],
+  "sample_size_generating_pearson": [0.943, 0.886, 0.829, 0.771, 0.714, 0.600]
+}

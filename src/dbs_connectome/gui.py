@@ -22,7 +22,7 @@ from .provenance import new_run, read_json, require_separate_output, write_json
 
 FIELDS = {
     "lateralized-study": ["manifest"], "exploratory-study": ["manifest"],
-    "replay-suite": ["config"],
+    "replay-suite": ["config"], "power-study": ["config"],
     "mask-repair": ["recipe"],
     "shared-masks": ["first_reference", "second_reference", "first_mask", "second_mask"],
     "study": ["manifest"], "graph-study": ["manifest"], "sensitivity-study": ["manifest"], "control-study": ["manifest"], "reference-validation": ["manifest"], "geometry-controls": ["manifest"], "representation-study": ["manifest"], "comparative-study": ["manifest"],
@@ -288,6 +288,7 @@ class JobManager:
                     reports += list(Path(job["output_root"]).glob("*/longitudinal_review.html"))
                     reports += list(Path(job["output_root"]).glob("*/study_review.html"))
                     reports += list(Path(job["output_root"]).glob("*/suite_review.html"))
+                    reports += list(Path(job["output_root"]).glob("*/power_review.html"))
                     reports += list(Path(job["output_root"]).glob("*/post1_mask_review.html"))
                     reports += list(Path(job["output_root"]).glob("*/report/results_review.html"))
                     if reports:
@@ -401,6 +402,7 @@ def make_handler(manager, token):
                     names['comparative-study'] = 'comparative_result.json'
                     names['lateralized-study'] = 'lateralized_result.json'
                     names['exploratory-study'] = 'exploratory_result.json'
+                    names['power-study'] = 'power_result.json'
                     if not job or job["status"] not in ("completed", "needs_qc") or job["stage"] not in names:
                         raise ValueError("No completed workflow result for this job")
                     result = read_json(Path(job["result_run"]) / names[job["stage"]])

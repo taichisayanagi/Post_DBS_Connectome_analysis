@@ -1,4 +1,4 @@
-# GUI quick start — v0.3.0a2 research preview
+# GUI quick start — v0.3.0a3 research preview
 
 ## Install and launch
 
@@ -9,7 +9,7 @@ intended environments; Windows/native MRI-tool interoperability has not been tes
 ```sh
 git clone https://github.com/taichisayanagi/Post_DBS_Connectome_analysis.git
 cd Post_DBS_Connectome_analysis
-git checkout v0.3.0a2
+git checkout v0.3.0a3
 python -m pip install .
 dbs-connectome gui --data-root /private/study_inputs --output-root /private/study_results
 ```
@@ -64,6 +64,12 @@ python examples/synthetic_study_demo.py --output-root /private/synthetic_demo
 This writes artificial inputs and a suite configuration. Synthetic outputs without independent
 expected values are deliberately **not** labelled as frozen-output verified. Do not add patient
 inputs, clinical manifests, results or private HTML reports to a public repository.
+
+The **Exact-test / detection-power audit** operation takes a `config` JSON such as
+`examples/statistical_design.json`. It needs no patient images. Its browser report separates
+exact n=6 ordering counts from Monte Carlo power estimates, records the random seed and
+reports simulation uncertainty. It is not a power calculation based on validated clinical
+effect sizes and does not certify the imaging pipeline.
 
 The one-job queue shows elapsed time, stage and actual logs. `planned` is not completed processing;
 `needs_qc` is not approval. On restart, load completed reconstruction/preparation directories explicitly.
