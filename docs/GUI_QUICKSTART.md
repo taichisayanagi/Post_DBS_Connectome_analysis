@@ -1,4 +1,4 @@
-# GUI quick start — v0.2.0a1 research preview
+# GUI quick start — v0.3.0a1 research preview
 
 ## Install and launch
 
@@ -9,7 +9,7 @@ intended environments; Windows/native MRI-tool interoperability has not been tes
 ```sh
 git clone https://github.com/taichisayanagi/Post_DBS_Connectome_analysis.git
 cd Post_DBS_Connectome_analysis
-git checkout v0.2.0a1
+git checkout v0.3.0a1
 python -m pip install .
 dbs-connectome gui --data-root /private/study_inputs --output-root /private/study_results
 ```
@@ -43,9 +43,27 @@ remain private information, including the self-contained HTML reports.
    the common node TSV. Build an explicitly reviewed training/independent mean reference, or use an
    existing reference. Review subject/visit pairing, then align both visits to that same reference.
    Open the change plot/table and `paired_gradient_change.csv`. Independent axis-stability and
-   artifact-sensitivity assessments are still required; automatic LOSO is not implemented.
+   artifact-sensitivity assessments are still required. For cohort common/LOSO analysis,
+   use the separate **Cohort / paper numerical replay** operation with a reviewed manifest.
 9. Optional: configure **Electric field / VTA-like simulation** with a separately installed OSS-DBS
    environment. It is a different measurement from artifact exclusion. Read [all limitations](STIMULATION.md).
+
+## Paper numerical replay
+
+In **Advanced steps**, choose **Run reviewed numerical replay suite** and supply a hash-bound
+suite JSON. The GUI reports progress for each cohort, sensitivity and control task and shows
+passed/failed/unverified statuses. See [manifest definitions](PAPER_REPLAY.md) and
+[the exact verification scope](VALIDATION_REPLAY_20261024.md).
+
+To inspect the format without private patient data, run the synthetic example from the repository:
+
+```sh
+python examples/synthetic_study_demo.py --output-root /private/synthetic_demo
+```
+
+This writes artificial inputs and a suite configuration. Synthetic outputs without independent
+expected values are deliberately **not** labelled as frozen-output verified. Do not add patient
+inputs, clinical manifests, results or private HTML reports to a public repository.
 
 The one-job queue shows elapsed time, stage and actual logs. `planned` is not completed processing;
 `needs_qc` is not approval. On restart, load completed reconstruction/preparation directories explicitly.
