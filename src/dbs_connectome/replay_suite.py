@@ -6,6 +6,9 @@ import re
 import time
 
 from .controls import run_controls
+from .comparative import run_comparative
+from .lateralized import run_lateralized
+from .exploratory import run_exploratory
 from .graphs import run_graph_study
 from .geometry_controls import run_geometry_controls
 from .representations import run_representations
@@ -23,6 +26,9 @@ OPERATIONS={
     'reference-validation':(run_reference_validation,'reference_validation_result.json'),
     'geometry-controls':(run_geometry_controls,'geometry_result.json'),
     'representation-study':(run_representations,'representation_result.json'),
+    'comparative-study':(run_comparative,'comparative_result.json'),
+    'lateralized-study':(run_lateralized,'lateralized_result.json'),
+    'exploratory-study':(run_exploratory,'exploratory_result.json'),
 }
 
 

@@ -50,6 +50,16 @@ def manifest_paths(spec):
         for arm in geometry.get('swaps', {}).values():
             for subject in arm['subjects']:
                 paths.extend([subject['matrix'], subject['exclusion_evidence']])
+    if spec.get('comparative'):
+        cfg = spec['comparative']
+        links = list(cfg.get('calibres', {}).values())
+        if cfg.get('external'): links.append(cfg['external'])
+        if cfg.get('transfer_reference'): links.append(cfg['transfer_reference'])
+        for item in links:
+            linked = read_json(item['manifest'])
+            if linked.get('comparative'):
+                raise ValueError('Nested comparative studies are forbidden')
+            paths.extend([item['manifest'], *manifest_paths(linked)])
     return paths
 
 

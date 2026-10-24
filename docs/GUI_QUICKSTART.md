@@ -1,4 +1,4 @@
-# GUI quick start — v0.3.0a1 research preview
+# GUI quick start — v0.3.0a2 research preview
 
 ## Install and launch
 
@@ -9,7 +9,7 @@ intended environments; Windows/native MRI-tool interoperability has not been tes
 ```sh
 git clone https://github.com/taichisayanagi/Post_DBS_Connectome_analysis.git
 cd Post_DBS_Connectome_analysis
-git checkout v0.3.0a1
+git checkout v0.3.0a2
 python -m pip install .
 dbs-connectome gui --data-root /private/study_inputs --output-root /private/study_results
 ```

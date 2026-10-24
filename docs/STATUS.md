@@ -1,6 +1,6 @@
 # Development status
 
-Updated 2026-10-24 (JST). Version: **0.3.0a1**, GUI research preview.
+Updated 2026-10-24 (JST). Version: **0.3.0a2**, GUI research preview.
 This is not an end-to-end validated DICOM pipeline or a clinical tool.
 
 | Workstream | Current state | Next acceptance check |
@@ -49,7 +49,18 @@ This is not an end-to-end validated DICOM pipeline or a clinical tool.
 - Common-reference graph and edge comparators reproduce 3/18 and 16/18 identification.
 - A macOS NextBrain DataLoader workaround runs only in a child process, without modifying
   the installed tool. Real anatomical processing is in progress, not declared validated.
-- 152 synthetic and regression checks pass locally; see the
+- Matched cross-cohort replication, unmasked-reference transfer and normalization audits:
+  212 frozen values matched within 1.5e-14. Calibre-wise ICC/rho ranges: 48 values matched.
+- Five lateralized definitions, left/right contrasts and symptom-dominant-side analyses:
+  54,516 numerical comparisons matched within 2e-14, including all multiplicity corrections.
+- The 280-test inventory, 420-test shared/session variants and 322-test shared-mask inventory:
+  9,814 numerical comparisons matched within 3.4e-16. The two mask variants are explicitly
+  separated; an old directory's name/comment was not trusted over its provenance note.
+- Historical matched replication used ten axes, not four. The exact ten-axis replay and a
+  separately labelled four-axis sensitivity calculation are both exported. Historical
+  pooled-coordinate geometry and the old non-ICC variance ratio are not presented as valid
+  hemisphere-aware geometry or scan-rescan ICC.
+- 164 synthetic and regression checks pass locally; see the
   [numerical-replay validation record](VALIDATION_REPLAY_20261024.md).
   Earlier evidence below belongs to v0.2.0a1.
 

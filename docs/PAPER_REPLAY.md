@@ -66,6 +66,37 @@ and writes a browser summary. Every task manifest is hash-bound. A task without 
 expected-output comparison is **computed, not verified**. The suite never issues an
 image-to-paper certificate, even when every selected numerical check passes.
 
+`comparative-study` adds three deliberately descriptive audits. Its `comparative` block
+names an `endpoint` and hash-bound linked `external`, `transfer_reference` and/or `calibres`
+manifests (`manifest` plus `sha256`). Nested comparative manifests are rejected. Every
+calibre must retain the same participant order, node identities and endpoint values.
+The reference-transfer branch requires `parcel_mapping_reviewed: true`, maps complete
+parcel names with matching hemisphere/network metadata, and uses explicitly unmasked
+preoperative references. Standardization of external session features is descriptive,
+not an out-of-sample prediction model. `replication_components` defaults to four; the
+historical ten-component setting must be explicitly selected. When ten are selected,
+both the ten-axis replay and a separate four-axis sensitivity table are exported.
+Calibre stability uses its historical mean-post1 reference, not primary LOSO.
+
+`lateralized-study` recomputes five hemisphere definitions, their exact correlations,
+left/right correlation contrasts, and optional symptom-side analyses. To enable the latter,
+provide `symptom_side_reviewed: true` and `symptom_dominant_side` keyed by each coded subject,
+with physical `L`/`R` values. Contralateral labels are derived from these reviewed clinical
+labels, never inferred from imaging. The side-label null preserves the observed allocation
+imbalance. Signed-position ratios are undefined and explicitly excluded. Missing or
+nonpositive denominators are not replaced with small constants.
+
+`exploratory-study` supports explicit `exploratory_inventory` choices: `legacy_140`
+(default, the 280 tests with two endpoints), `legacy_60_mean_centres` and
+`legacy_46_median_centres`. The latter two give 420/322 tests with seven complete endpoints
+on the study's node set. Counts depend on available structures and constant measures.
+These are historical-definition audits: bilateral coordinate pooling, unaligned axis
+meaning, eigenvalue shares and the non-ICC variance ratio carry warnings. The legacy
+subcortical time-0 slot duplicates post1 and must not be used as preoperative data.
+Both all-endpoint and endpoint-wise shared-permutation max statistics are exported.
+Discrete-null hit expectations are calculated from each actual permutation distribution,
+not hard-coded as 5% or 3.33% of the test count.
+
 `study-mask` exposes the original filled-brain-exit b0 void-follow primitive on a
 2-mm grid. Its output is a candidate requiring review. The separately implemented
 CT/MRI editor is a different algorithm. Manual repairs and longitudinal registration
@@ -133,10 +164,10 @@ and `simulation_retrack`. They must share the fixed node basis and reference des
   overlays have been replayed; fresh image QC is a different requirement.
 - Validate the separate unmasked preoperative graph basis and all supplementary sensitivity,
   reliability, artifact and healthy-reference analyses.
-- Remaining supplementary families include the legacy 280/322/420-test inventories,
-  symptom-side comparisons, caliber-wise comparisons, cross-cohort transfer and replication
-  across matched representations and simulation-based power.
-  Supplying one passing primary-analysis manifest does not cover these families.
+- Remaining supplementary coverage includes omnibus/family-hit-count null audits,
+  simulation-based power and all adopted figure sources. Legacy 280/322/420 inventories,
+  lateralized/symptom-side analyses and comparative audits are separate operations;
+  supplying one passing primary-analysis manifest does not execute them automatically.
 - Rebuild every adopted figure/table from recomputed results and verify its source values.
 - Complete expert image QC before any new patient-derived outputs are accepted.
 

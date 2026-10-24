@@ -22,12 +22,12 @@ def parser():
     gui.add_argument("--data-root", required=True)
     gui.add_argument("--output-root", required=True)
     gui.add_argument("--port", type=int, default=8765)
-    for name in ("environment", "inventory", "import-session", "import-nifti", "reconstruct", "prepare-session", "finish-session", "convert", "mask", "union", "approve", "connectome", "reference", "embed", "change", "fingerprint", "qc", "electrode", "adopt-electrode", "simulate", "material", "results", "cohort-reference", "longitudinal", "study", "graph-study", "sensitivity-study", "control-study", "reference-validation", "geometry-controls", "representation-study", "replay-suite", "study-mask", "mask-repair", "shared-masks"):
+    for name in ("environment", "inventory", "import-session", "import-nifti", "reconstruct", "prepare-session", "finish-session", "convert", "mask", "union", "approve", "connectome", "reference", "embed", "change", "fingerprint", "qc", "electrode", "adopt-electrode", "simulate", "material", "results", "cohort-reference", "longitudinal", "study", "graph-study", "sensitivity-study", "control-study", "reference-validation", "geometry-controls", "representation-study", "comparative-study", "lateralized-study", "exploratory-study", "replay-suite", "study-mask", "mask-repair", "shared-masks"):
         s = sub.add_parser(name)
         s.add_argument("--output-root", required=True, help="Private result root outside source checkout")
         if name == "environment":
             pass
-        elif name in ("study", "graph-study", "sensitivity-study", "control-study", "reference-validation", "geometry-controls", "representation-study"):
+        elif name in ("study", "graph-study", "sensitivity-study", "control-study", "reference-validation", "geometry-controls", "representation-study", "comparative-study", "lateralized-study", "exploratory-study"):
             s.add_argument("--manifest", required=True)
         elif name == "replay-suite":
             s.add_argument("--config", required=True)
@@ -185,6 +185,18 @@ def run(args, out):
     elif command == "representation-study":
         from .representations import run_representations
         run_representations(args.manifest, out)
+        return
+    elif command == "comparative-study":
+        from .comparative import run_comparative
+        run_comparative(args.manifest, out)
+        return
+    elif command == "lateralized-study":
+        from .lateralized import run_lateralized
+        run_lateralized(args.manifest, out)
+        return
+    elif command == "exploratory-study":
+        from .exploratory import run_exploratory
+        run_exploratory(args.manifest, out)
         return
     elif command == "study":
         from .study import run_study

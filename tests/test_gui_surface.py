@@ -60,6 +60,10 @@ class GuiSurfaceTests(unittest.TestCase):
         self.assertIn("__NOTICE__", TEMPLATE)
         self.assertIn("connect-src 'none'", TEMPLATE)
 
+    def test_version_comes_from_running_backend(self):
+        self.assertIn("$('appVersion').textContent=state.version", self.html)
+        self.assertNotRegex(self.html, r'0\.\d+\.\d+a\d+')
+
 
 if __name__ == "__main__":
     unittest.main()

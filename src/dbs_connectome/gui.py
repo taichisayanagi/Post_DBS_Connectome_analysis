@@ -21,10 +21,11 @@ from . import __version__
 from .provenance import new_run, read_json, require_separate_output, write_json
 
 FIELDS = {
+    "lateralized-study": ["manifest"], "exploratory-study": ["manifest"],
     "replay-suite": ["config"],
     "mask-repair": ["recipe"],
     "shared-masks": ["first_reference", "second_reference", "first_mask", "second_mask"],
-    "study": ["manifest"], "graph-study": ["manifest"], "sensitivity-study": ["manifest"], "control-study": ["manifest"], "reference-validation": ["manifest"], "geometry-controls": ["manifest"], "representation-study": ["manifest"],
+    "study": ["manifest"], "graph-study": ["manifest"], "sensitivity-study": ["manifest"], "control-study": ["manifest"], "reference-validation": ["manifest"], "geometry-controls": ["manifest"], "representation-study": ["manifest"], "comparative-study": ["manifest"],
     "study-mask": ["reference", "seed_mask", "spec"],
     "cohort-reference": ["nodes"], "longitudinal": ["first_connectome_run", "second_connectome_run", "reference_run", "nodes"],
     "results": ["gradient_run", "nodes"],
@@ -79,7 +80,7 @@ class JobManager:
             if path.is_dir() != is_directory:
                 raise ValueError("Wrong file/directory type: " + field)
             args += ["--" + field.replace("_", "-"), str(path)]
-        if stage in ("study", "graph-study", "sensitivity-study", "control-study", "reference-validation", "geometry-controls", "representation-study"):
+        if stage in ("study", "graph-study", "sensitivity-study", "control-study", "reference-validation", "geometry-controls", "representation-study", "comparative-study", "lateralized-study", "exploratory-study"):
             from .study import manifest_paths
             spec = read_json(self.resolve_input(supplied["manifest"]))
             for path in manifest_paths(spec):
@@ -397,6 +398,9 @@ def make_handler(manager, token):
                              "cohort-reference": "cohort_result.json", "longitudinal": "longitudinal_result.json",
                              "finish-session": "session_result.json", "approve": "approval.json"}
                     names['representation-study'] = 'representation_result.json'
+                    names['comparative-study'] = 'comparative_result.json'
+                    names['lateralized-study'] = 'lateralized_result.json'
+                    names['exploratory-study'] = 'exploratory_result.json'
                     if not job or job["status"] not in ("completed", "needs_qc") or job["stage"] not in names:
                         raise ValueError("No completed workflow result for this job")
                     result = read_json(Path(job["result_run"]) / names[job["stage"]])

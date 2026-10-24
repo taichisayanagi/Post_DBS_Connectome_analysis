@@ -2,7 +2,7 @@
 
 Scripts for Analysis for brains post deep brain stimulation electrode implantation
 
-## DBS Native Connectome — GUI research preview v0.3.0a1
+## DBS Native Connectome — GUI research preview v0.3.0a2
 
 Research software for electrode-aware, native-space structural connectomics.
 **Public research preview with linked processing stages, an image editor and an optional field solver.
@@ -21,7 +21,7 @@ These are separate from the still-incomplete **raw-image-to-paper validation**.
 
 **[GUI quick start](docs/GUI_QUICKSTART.md)** · **[Electrode editor](docs/ELECTRODE_EDITOR.md)** ·
 **[Electric field / VTA-like simulation](docs/STIMULATION.md)** · **[v0.2.0a1 validation](docs/VALIDATION_20261024.md)**
-· **[v0.3.0a1 numerical-replay validation](docs/VALIDATION_REPLAY_20261024.md)**
+· **[Numerical-replay validation](docs/VALIDATION_REPLAY_20261024.md)**
 
 **New: [NIfTI / DICOM linked workflow](docs/LINKED_WORKFLOW.md).** The browser accepts raw NIfTI
 or reviewed DICOM series and links DWI/FOD reconstruction, anatomical registration, installed
