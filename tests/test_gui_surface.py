@@ -63,6 +63,7 @@ class GuiSurfaceTests(unittest.TestCase):
     def test_version_comes_from_running_backend(self):
         self.assertIn("$('appVersion').textContent=state.version", self.html)
         self.assertNotRegex(self.html, r'0\.\d+\.\d+a\d+')
+        self.assertIn('Statistical design configuration (JSON)', self.html)
 
 
 if __name__ == "__main__":
