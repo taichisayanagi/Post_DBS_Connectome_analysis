@@ -1,6 +1,6 @@
 # Development status
 
-Updated 2026-10-24 (JST). Version: **0.3.0a3**, GUI research preview.
+Updated 2026-10-25 (JST). Version: **0.3.0a4**, GUI research preview.
 This is not an end-to-end validated DICOM pipeline or a clinical tool.
 
 | Workstream | Current state | Next acceptance check |
@@ -19,6 +19,22 @@ This is not an end-to-end validated DICOM pipeline or a clinical tool.
 | Environment setup | Read-only GUI discovery via PATH/configured suite roots; stage-specific execution checks | GUI path settings, resource/license availability checks and bounded smoke tests |
 
 ## Evidence obtained so far
+
+### Small synthetic integration demo (2026-10-25)
+
+- The input-free GUI demo completed actual CT/T1 DICOM conversion, diffusion-NIfTI CSD,
+  CT/MRI candidate masking, ACT/iFOD2 generation of 10,000 tracks, strict electrode
+  exclusion, SIFT2 refit, a 32-node connectome, G1–G4 and graph/node/edge exports.
+- The observed GUI run took 5.4 seconds including process startup (4.45 seconds inside
+  the pipeline). Its 8,745 retained tracks had zero mask intersections; endpoint weight
+  sums independently matched all matrix entries. Counts vary with stochastic tracking.
+- Known geometrical atlas/5TT maps replace FreeSurfer/NextBrain; this tests integration,
+  not realistic anatomy, acquisition preprocessing, clinical outcomes or full-paper reproduction.
+- 176 local unit/regression tests pass. See [demo instructions](SYNTHETIC_DEMO.md) and
+  [validation record](VALIDATION_SYNTHETIC_20261025.md).
+- Separately, the real-image NextBrain continuation finished both hemispheres on 2026-10-24
+  at 19:53 JST; its input-integrity check passed. It resumed existing T1/SynthSeg/registration
+  outputs and does not establish complete new-image reconstruction. Expert image QC remains open.
 
 ### Added numerical replay evidence (2026-10-24)
 
@@ -48,7 +64,8 @@ This is not an end-to-end validated DICOM pipeline or a clinical tool.
   not counted as a passing replay. The associated figure/table provenance needs adjudication.
 - Common-reference graph and edge comparators reproduce 3/18 and 16/18 identification.
 - A macOS NextBrain DataLoader workaround runs only in a child process, without modifying
-  the installed tool. Real anatomical processing is in progress, not declared validated.
+  the installed tool. Real anatomical processing was in progress on 2026-10-24; completion
+  and its limited scope are recorded in the 2026-10-25 update above.
 - Matched cross-cohort replication, unmasked-reference transfer and normalization audits:
   212 frozen values matched within 1.5e-14. Calibre-wise ICC/rho ranges: 48 values matched.
 - Five lateralized definitions, left/right contrasts and symptom-dominant-side analyses:

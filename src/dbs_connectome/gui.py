@@ -21,6 +21,7 @@ from . import __version__
 from .provenance import new_run, read_json, require_separate_output, write_json
 
 FIELDS = {
+    "synthetic-demo": [],
     "lateralized-study": ["manifest"], "exploratory-study": ["manifest"],
     "replay-suite": ["config"], "power-study": ["config"],
     "mask-repair": ["recipe"],
@@ -70,6 +71,8 @@ class JobManager:
         supplied = body.get("inputs", {})
         if not isinstance(supplied, dict):
             raise ValueError("Inputs must be an object")
+        if stage == "synthetic-demo" and supplied:
+            raise ValueError("Synthetic demo accepts no patient or external input files")
         args = [stage, "--output-root", str(job_root)]
         for field in FIELDS[stage]:
             value = supplied.get(field, "")
@@ -203,12 +206,12 @@ class JobManager:
                 if not isinstance(value, str):
                     raise ValueError("Prepared config paths must be strings")
                 self.resolve_input(config_path.parent / value)
-        if stage in ("connectome", "reconstruct", "prepare-session", "finish-session", "simulate", "shared-masks"):
+        if stage in ("synthetic-demo", "connectome", "reconstruct", "prepare-session", "finish-session", "simulate", "shared-masks"):
             threads = body.get("threads")
             if not isinstance(threads, int) or isinstance(threads, bool) or not 1 <= threads <= 128:
                 raise ValueError("Select an explicit thread count between 1 and 128")
             args += ["--threads", str(threads)]
-        if stage in ("convert", "connectome", "import-session", "reconstruct", "prepare-session", "finish-session", "simulate", "shared-masks") and body.get("execute"):
+        if stage in ("synthetic-demo", "convert", "connectome", "import-session", "reconstruct", "prepare-session", "finish-session", "simulate", "shared-masks") and body.get("execute"):
             if body.get("approve_compute") is not True:
                 raise ValueError("Explicit confirmation is required to execute external image-processing tools")
             args.append("--execute")
@@ -289,6 +292,8 @@ class JobManager:
                     reports += list(Path(job["output_root"]).glob("*/study_review.html"))
                     reports += list(Path(job["output_root"]).glob("*/suite_review.html"))
                     reports += list(Path(job["output_root"]).glob("*/power_review.html"))
+                    # Demo result takes priority over its unapproved mask preview.
+                    reports = list(Path(job["output_root"]).glob("*/synthetic_review.html")) + reports
                     reports += list(Path(job["output_root"]).glob("*/post1_mask_review.html"))
                     reports += list(Path(job["output_root"]).glob("*/report/results_review.html"))
                     if reports:
@@ -403,6 +408,7 @@ def make_handler(manager, token):
                     names['lateralized-study'] = 'lateralized_result.json'
                     names['exploratory-study'] = 'exploratory_result.json'
                     names['power-study'] = 'power_result.json'
+                    names['synthetic-demo'] = 'synthetic_result.json'
                     if not job or job["status"] not in ("completed", "needs_qc") or job["stage"] not in names:
                         raise ValueError("No completed workflow result for this job")
                     result = read_json(Path(job["result_run"]) / names[job["stage"]])

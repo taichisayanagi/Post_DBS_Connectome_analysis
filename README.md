@@ -2,7 +2,7 @@
 
 Scripts for Analysis for brains post deep brain stimulation electrode implantation
 
-## DBS Native Connectome — GUI research preview v0.3.0a2
+## DBS Native Connectome — GUI research preview v0.3.0a4
 
 Research software for electrode-aware, native-space structural connectomics.
 **Public research preview with linked processing stages, an image editor and an optional field solver.
@@ -12,6 +12,11 @@ New code is MIT-licensed. Dependencies and atlases retain their own licenses.
 No patient data, brain images, private study matrices or third-party atlases are distributed.
 
 **[Current development progress and remaining milestones](docs/STATUS.md)**
+
+**[Small synthetic integration demo](docs/SYNTHETIC_DEMO.md)**: try the GUI without patient
+files. Real dcm2niix and MRtrix commands run from artificial CT/T1 DICOM and diffusion NIfTI
+through CSD, CT/MRI masking, ACT/iFOD2, exclusion, SIFT2, connectome and G1–G4. The fixture
+uses known atlas/tissue maps; it does not validate FreeSurfer/NextBrain or patient anatomy.
 
 **[Paper-analysis numerical replay](docs/PAPER_REPLAY.md)** now covers reviewed cohort
 matrices, common/LOSO gradients, clinical permutation tests, graph/node/edge summaries,
@@ -102,6 +107,7 @@ nibabel 5.3.3 and BrainSpace 0.1.22. External tools are separately installed.
 python -m pip install -e .
 python -m unittest discover -s tests -v
 dbs-connectome --help
+dbs-connectome synthetic-demo --output-root /private/analysis --threads 2 --execute
 python examples/synthetic_demo.py --output-root /private/analysis
 dbs-connectome gui --data-root /private/study --output-root /private/analysis
 dbs-connectome convert --dicom-dir /private/input/selected_series --output-root /private/analysis

@@ -22,10 +22,13 @@ def parser():
     gui.add_argument("--data-root", required=True)
     gui.add_argument("--output-root", required=True)
     gui.add_argument("--port", type=int, default=8765)
-    for name in ("environment", "inventory", "import-session", "import-nifti", "reconstruct", "prepare-session", "finish-session", "convert", "mask", "union", "approve", "connectome", "reference", "embed", "change", "fingerprint", "qc", "electrode", "adopt-electrode", "simulate", "material", "results", "cohort-reference", "longitudinal", "study", "graph-study", "sensitivity-study", "control-study", "reference-validation", "geometry-controls", "representation-study", "comparative-study", "lateralized-study", "exploratory-study", "replay-suite", "power-study", "study-mask", "mask-repair", "shared-masks"):
+    for name in ("synthetic-demo", "environment", "inventory", "import-session", "import-nifti", "reconstruct", "prepare-session", "finish-session", "convert", "mask", "union", "approve", "connectome", "reference", "embed", "change", "fingerprint", "qc", "electrode", "adopt-electrode", "simulate", "material", "results", "cohort-reference", "longitudinal", "study", "graph-study", "sensitivity-study", "control-study", "reference-validation", "geometry-controls", "representation-study", "comparative-study", "lateralized-study", "exploratory-study", "replay-suite", "power-study", "study-mask", "mask-repair", "shared-masks"):
         s = sub.add_parser(name)
         s.add_argument("--output-root", required=True, help="Private result root outside source checkout")
-        if name == "environment":
+        if name == "synthetic-demo":
+            s.add_argument("--threads", type=int, default=2)
+            s.add_argument("--execute", action="store_true")
+        elif name == "environment":
             pass
         elif name in ("study", "graph-study", "sensitivity-study", "control-study", "reference-validation", "geometry-controls", "representation-study", "comparative-study", "lateralized-study", "exploratory-study"):
             s.add_argument("--manifest", required=True)
@@ -145,7 +148,11 @@ def checked_artifact(run, filename, stage):
 def run(args, out):
     command = args.command
     inputs, outputs, parameters, status = [], [], {}, "completed"
-    if command == "mask-repair":
+    if command == "synthetic-demo":
+        from .synthetic import run_synthetic
+        run_synthetic(out, args.threads, args.execute)
+        return
+    elif command == "mask-repair":
         from .mask_lineage import repair_mask
         repair_mask(args.recipe, out)
         return
